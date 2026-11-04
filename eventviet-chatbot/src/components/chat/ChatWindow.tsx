@@ -2,10 +2,13 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useChat } from "@/hooks/useChat";
-import type { Booking } from "@/lib/schemas";
+import type { Booking, ChatOption } from "@/lib/schemas";
 import PricingComparisonCard from "./PricingComparisonCard";
 import InChatBookingCard from "./InChatBookingCard";
 import BookingConfirmationTicket from "./BookingConfirmationTicket";
+import OptionChips from "./OptionChips";
+import RelatedQuestions from "./RelatedQuestions";
+import BookingPrompt from "./BookingPrompt";
 import TypingIndicator from "./TypingIndicator";
 
 interface ChatWindowProps {
@@ -20,18 +23,23 @@ interface CustomChatMessage {
   time: string;
   type?: "pricing" | "booking_form" | "booking_confirmed" | "text";
   bookingData?: Booking;
-  followups?: string[];
+  options?: ChatOption[];
+  relatedQuestions?: [string, string, string];
+  needsBooking?: boolean;
+  source?: "ai" | "mock";
+  bookingDefaultEventType?: string;
 }
 
 export default function ChatWindow({ onToggleSidebar, externalPrompt }: ChatWindowProps) {
   const { messages: liveMessages, isLoading, sendMessage: sendApiMessage } = useChat();
 
   const [inputVal, setInputVal] = useState("");
-  const [isRecording, setIsRecording] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const [confirmedBooking, setConfirmedBooking] = useState<Booking | null>(null);
-  const [showBookingForm, setShowBookingForm] = useState(false);
 
-  // Initial demo conversation matching Stitch Canvas precisely
+  const recognitionRef = useRef<any>(null);
+
+  // Initial demo conversation
   const [messages, setMessages] = useState<CustomChatMessage[]>([
     {
       id: "m-user-1",
@@ -43,13 +51,17 @@ export default function ChatWindow({ onToggleSidebar, externalPrompt }: ChatWind
     {
       id: "m-ai-1",
       sender: "ai",
-      text: "Dạ thưa Quý khách, với quy mô 200 khách cho dạ tiệc Tri ân Khách hàng (Customer Appreciation Gala), EventHHD phân bổ 3 phân khúc chuẩn mực để doanh nghiệp dễ dàng cân đối ngân sách:",
+      text: "Dạ thưa Quý khách, với quy mô 200 khách cho dạ tiệc Tri ân Khách hàng (Customer Appreciation Gala), EventViet phân bổ 3 phân khúc chuẩn mực để doanh nghiệp dễ dàng cân đối ngân sách:",
       time: "14:22",
       type: "pricing",
-      followups: [
-        "Xem mẫu kịch bản chi tiết?",
-        "Ưu đãi đặt sảnh tiệc 5 sao?",
-        "Tôi muốn gặp chuyên viên tư vấn",
+      options: [
+        { id: "opt-1", label: "Xem chi tiết gói Prestige", action: "ask", payload: "Chi tiết gói Prestige Executive 200 khách" },
+        { id: "opt-2", label: "Đặt lịch tư vấn trực tiếp 1-1", action: "open_booking", payload: "Tiệc Tri ân 200 khách" },
+      ],
+      relatedQuestions: [
+        "Xem mẫu kịch bản chi tiết Gala Dinner?",
+        "Ưu đãi sảnh tiệc 5 sao liên kết tại TP.HCM?",
+        "Quy trình đặt cọc và thanh toán hợp đồng?",
       ],
     },
     {
@@ -65,6 +77,8 @@ export default function ChatWindow({ onToggleSidebar, externalPrompt }: ChatWind
       text: "Hạng mục phi cơ riêng & trực thăng đón khách VIP thuộc dịch vụ Concierge đặc quyền ngoài danh mục tiêu chuẩn đại chúng. Quy trình này đòi hỏi phê duyệt đường bay từ Cục Hàng không Dân dụng, bố trí bãi đáp trực thăng tại resort và quy chuẩn an ninh hộ tống chuyên biệt.\n\nĐể chuẩn bị chu đáo, bảo mật và an toàn nhất, em xin mời Anh/Chị đặt lịch tư vấn 1-1 trực tiếp với Giám đốc Điều phối sự kiện cấp cao:",
       time: "14:24",
       type: "booking_form",
+      needsBooking: true,
+      bookingDefaultEventType: "Dịch vụ Concierge VIP & Trực thăng",
     },
   ]);
 
@@ -78,11 +92,19 @@ export default function ChatWindow({ onToggleSidebar, externalPrompt }: ChatWind
     }
   }, [externalPrompt]);
 
-  // Sync with live AI messages from useChat
+  // Sync with live AI messages from useChat & bind full Contract Data
   useEffect(() => {
     if (liveMessages.length > 0) {
       const last = liveMessages[liveMessages.length - 1];
       if (last.role === "assistant") {
+        const responseData = last.response;
+        const isPricing =
+          last.content.toLowerCase().includes("báo giá") ||
+          last.content.toLowerCase().includes("chi phí") ||
+          last.content.toLowerCase().includes("ngân sách");
+
+        const needsBooking = responseData?.needs_booking === true;
+
         setMessages((prev) => [
           ...prev,
           {
@@ -90,8 +112,12 @@ export default function ChatWindow({ onToggleSidebar, externalPrompt }: ChatWind
             sender: "ai",
             text: last.content,
             time: new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
-            type: last.content.toLowerCase().includes("báo giá") || last.content.toLowerCase().includes("chi phí") ? "pricing" : "text",
-            followups: ["Xem bảng giá trọn gói", "Tôi muốn gặp chuyên viên tư vấn"],
+            type: needsBooking ? "booking_form" : isPricing ? "pricing" : "text",
+            options: responseData?.options,
+            relatedQuestions: responseData?.related_questions,
+            needsBooking,
+            source: responseData?.source,
+            bookingDefaultEventType: needsBooking ? "Tư vấn Yêu cầu Sự kiện Đặc Biệt" : undefined,
           },
         ]);
       }
@@ -100,7 +126,7 @@ export default function ChatWindow({ onToggleSidebar, externalPrompt }: ChatWind
 
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isLoading, showBookingForm, confirmedBooking]);
+  }, [messages, isLoading, confirmedBooking]);
 
   const handleUserSendMessage = (textToSend?: string) => {
     const text = (textToSend ?? inputVal).trim();
@@ -124,12 +150,12 @@ export default function ChatWindow({ onToggleSidebar, externalPrompt }: ChatWind
 
     setMessages((prev) => [...prev, userMsg]);
 
-    // Check if query is about booking
+    // Check if query directly asks for booking
+    const lower = text.toLowerCase();
     if (
-      text.toLowerCase().includes("tư vấn") ||
-      text.toLowerCase().includes("đặt lịch") ||
-      text.toLowerCase().includes("hẹn") ||
-      text.toLowerCase().includes("chuyên viên")
+      lower.includes("tư vấn 1-1") ||
+      lower.includes("đặt lịch hẹn") ||
+      lower.includes("gặp chuyên viên")
     ) {
       setTimeout(() => {
         setMessages((prev) => [
@@ -137,12 +163,13 @@ export default function ChatWindow({ onToggleSidebar, externalPrompt }: ChatWind
           {
             id: `ai-booking-${Date.now()}`,
             sender: "ai",
-            text: "Dạ vâng, để chuẩn bị kịch bản chu đáo và báo giá chuẩn xác nhất, em xin mời Anh/Chị điền thông tin phiếu hẹn dưới đây. Giám đốc Điều phối sẽ liên hệ hỗ trợ Anh/Chị ngay ạ:",
+            text: "Dạ vâng, để chuẩn bị kịch bản chu đáo và báo giá chuẩn xác nhất, em xin gửi Quý khách phiếu đặt lịch tư vấn 1-1 với Giám đốc Điều phối EventViet:",
             time: nowTime,
             type: "booking_form",
+            needsBooking: true,
           },
         ]);
-      }, 500);
+      }, 400);
       return;
     }
 
@@ -150,27 +177,24 @@ export default function ChatWindow({ onToggleSidebar, externalPrompt }: ChatWind
     sendApiMessage(text);
   };
 
-  const handleFollowupClick = (f: string) => {
-    if (f.includes("chuyên viên tư vấn") || f.includes("đặt lịch")) {
-      setShowBookingForm(true);
+  const handleOptionClick = (action: string, payload?: string) => {
+    if (action === "open_booking") {
       setMessages((prev) => [
         ...prev,
         {
-          id: `user-btn-${Date.now()}`,
-          sender: "user",
-          text: f,
-          time: new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
-        },
-        {
           id: `ai-form-${Date.now()}`,
           sender: "ai",
-          text: "Dạ vâng, em xin gửi phiếu đặt lịch tư vấn 1-1 trực tiếp với Giám đốc Điều phối cấp cao:",
+          text: "Dạ vâng, em xin gửi phiếu đăng ký tư vấn 1-1 trực tiếp cùng Giám đốc Điều phối EventViet:",
           time: new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
           type: "booking_form",
+          needsBooking: true,
+          bookingDefaultEventType: payload || "Tư vấn Tổ chức Sự kiện",
         },
       ]);
+    } else if (action === "link" && payload) {
+      window.open(payload, "_blank");
     } else {
-      handleUserSendMessage(f);
+      handleUserSendMessage(payload);
     }
   };
 
@@ -181,7 +205,7 @@ export default function ChatWindow({ onToggleSidebar, externalPrompt }: ChatWind
       {
         id: `confirmed-${Date.now()}`,
         sender: "ai",
-        text: "Chúc mừng Quý khách! Lịch hẹn đã được hệ thống ghi nhận thành công:",
+        text: "Chúc mừng Quý khách! Lịch hẹn tư vấn 1-1 đã được hệ thống EventViet ghi nhận thành công:",
         time: new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
         type: "booking_confirmed",
         bookingData: booking,
@@ -190,49 +214,112 @@ export default function ChatWindow({ onToggleSidebar, externalPrompt }: ChatWind
   };
 
   const handleResetChat = () => {
-    if (confirm("Làm mới lại cuộc hội thoại với AI Eve?")) {
+    if (confirm("Làm mới lại cuộc hội thoại với Trợ lý AI Eve?")) {
       setMessages([]);
       setConfirmedBooking(null);
-      setShowBookingForm(false);
     }
   };
 
   const handleExportChat = () => {
     const transcript = messages
-      .map((m) => `[${m.time}] ${m.sender === "ai" ? "Trợ lý AI Eve" : "Khách hàng"}: ${m.text}`)
+      .map((m) => `[${m.time}] ${m.sender === "ai" ? "Trợ lý AI EventViet" : "Khách hàng"}: ${m.text}`)
       .join("\n\n");
-    const blob = new Blob([`BIÊN BẢN TƯ VẤN SỰ KIỆN - EVENTHHD\nNgày: ${new Date().toLocaleDateString("vi-VN")}\n\n${transcript}`], {
+    const blob = new Blob([`BIÊN BẢN TƯ VẤN SỰ KIỆN - EVENTVIET DEMO\nNgày: ${new Date().toLocaleDateString("vi-VN")}\nTổng số lượt trao đổi: ${messages.length}\n\n${transcript}`], {
       type: "text/plain;charset=utf-8",
     });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `Bien-ban-tu-van-EventHHD-${Date.now()}.txt`;
+    a.download = `Bien-ban-tu-van-EventViet-${Date.now()}.txt`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  const toggleMic = () => {
-    if (!isRecording) {
-      setIsRecording(true);
-      setTimeout(() => {
-        setIsRecording(false);
-        setInputVal("Báo giá tiệc Gala cuối năm 300 khách tại Khách sạn Sheraton");
-      }, 2500);
-    } else {
-      setIsRecording(false);
+  // Web Speech API Native
+  const toggleVoice = () => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
     }
+
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      alert("Trình duyệt hiện tại chưa hỗ trợ Web Speech API. Vui lòng sử dụng Google Chrome hoặc Microsoft Edge.");
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = "vi-VN";
+      recognition.continuous = false;
+      recognition.interimResults = true;
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onresult = (event: any) => {
+        const transcript = Array.from(event.results)
+          .map((result: any) => result[0].transcript)
+          .join("");
+        setInputVal(transcript);
+      };
+
+      recognition.onerror = (event: any) => {
+        console.warn("Speech error:", event.error);
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch (err) {
+      console.error("Lỗi micro:", err);
+      setIsListening(false);
+    }
+  };
+
+  // Upload và phân tích Brief/RFP tệp khách hàng
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const fileName = file.name;
+    const fileSize = (file.size / 1024).toFixed(1) + " KB";
+
+    if (file.type.includes("text") || fileName.endsWith(".txt") || fileName.endsWith(".md") || fileName.endsWith(".json")) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const textContent = (event.target?.result as string)?.slice(0, 1000) ?? "";
+        handleUserSendMessage(
+          `[Đã đính kèm tệp: ${fileName} (${fileSize})]\nNội dung brief:\n"${textContent}"\n\nNhờ Trợ lý phân tích tệp này và đề xuất gói dịch vụ, kịch bản sơ bộ cho sự kiện.`
+        );
+      };
+      reader.readAsText(file);
+    } else {
+      handleUserSendMessage(
+        `[Đã gửi tài liệu đính kèm: ${fileName} (${fileSize})]\nEm muốn được tư vấn báo giá và phương án triển khai phù hợp cho tài liệu này.`
+      );
+    }
+
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const faqInitialChips = [
     { text: "Chi phí tổ chức tiệc cưới trọn gói?", icon: "payments" },
-    { text: "Quy trình đặt cọc và thanh toán?", icon: "receipt_long" },
-    { text: "Thời gian chuẩn bị sự kiện mất bao lâu?", icon: "schedule" },
-    { text: "Chính sách bảo hiểm & rủi ro thời tiết?", icon: "umbrella" },
+    { text: "Quy trình đặt cọc và hợp đồng?", icon: "receipt_long" },
+    { text: "Thời gian chuẩn bị tối thiểu bao lâu?", icon: "schedule" },
+    { text: "Chính sách hủy và đổi lịch sự kiện?", icon: "umbrella" },
     { text: "Có hỗ trợ MC song ngữ & kịch bản không?", icon: "mic" },
     { text: "Ưu đãi cho khách hàng doanh nghiệp?", icon: "corporate_fare" },
-    { text: "Danh sách địa điểm sảnh tiệc 5 sao liên kết?", icon: "domain" },
-    { text: "Tiêu chuẩn an ninh và bảo mật VIP Summit?", icon: "shield_lock" },
+    { text: "Địa điểm và sảnh tiệc 5 sao liên kết?", icon: "domain" },
+    { text: "Khu vực phục vụ sự kiện của EventViet?", icon: "location_on" },
   ];
 
   return (
@@ -242,11 +329,8 @@ export default function ChatWindow({ onToggleSidebar, externalPrompt }: ChatWind
         type="file"
         ref={fileInputRef}
         className="hidden"
-        onChange={(e) => {
-          if (e.target.files?.[0]) {
-            handleUserSendMessage(`[Đã đính kèm tài liệu: ${e.target.files[0].name}]`);
-          }
-        }}
+        accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg"
+        onChange={handleFileUpload}
       />
 
       {/* Header of Chat Window */}
@@ -261,16 +345,16 @@ export default function ChatWindow({ onToggleSidebar, externalPrompt }: ChatWind
           <div className="truncate">
             <div className="flex items-center gap-1.5">
               <span className="font-title-md text-xs sm:text-sm text-slate-900 font-bold truncate">
-                Trợ lý AI Tư vấn Sự kiện 24/7
+                Trợ lý AI Tư vấn Sự kiện 24/7 (EventViet)
               </span>
               <span className="material-symbols-outlined text-[#4f46e5] text-[16px] shrink-0" title="Đã chứng thực">
                 verified
               </span>
             </div>
             <p className="font-body-sm text-[11px] text-[#464555] flex items-center gap-1.5 truncate">
-              <span>Phản hồi thông minh tức thì</span>
+              <span>Hỗ trợ RAG FAQ & Báo giá tức thì</span>
               <span className="text-slate-300">•</span>
-              <span className="text-emerald-700 font-medium">Sẵn sàng kết nối Điều phối viên</span>
+              <span className="text-emerald-700 font-medium">Đặt lịch tư vấn 1-1 trực tiếp</span>
             </p>
           </div>
         </div>
@@ -280,7 +364,7 @@ export default function ChatWindow({ onToggleSidebar, externalPrompt }: ChatWind
           <button
             type="button"
             onClick={handleExportChat}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 shadow-xs"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 shadow-xs cursor-pointer"
             title="Xuất biên bản cuộc trò chuyện"
           >
             <span className="material-symbols-outlined text-[15px] text-[#4f46e5]">download</span>
@@ -290,7 +374,7 @@ export default function ChatWindow({ onToggleSidebar, externalPrompt }: ChatWind
           <button
             type="button"
             onClick={handleResetChat}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 shadow-xs"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 shadow-xs cursor-pointer"
             title="Làm mới cuộc trò chuyện"
           >
             <span className="material-symbols-outlined text-[15px] text-slate-500">restart_alt</span>
@@ -301,8 +385,8 @@ export default function ChatWindow({ onToggleSidebar, externalPrompt }: ChatWind
             <button
               type="button"
               onClick={onToggleSidebar}
-              className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-[#4f46e5] border border-indigo-200 shadow-xs transition-all"
-              title="Ẩn / Hiện thanh trợ giúp bên phải"
+              className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-[#4f46e5] border border-indigo-200 shadow-xs transition-all cursor-pointer"
+              title="Ẩn / Hiện thanh câu hỏi thường gặp bên phải"
             >
               <span className="material-symbols-outlined text-[18px]">
                 dock_to_right
@@ -322,10 +406,10 @@ export default function ChatWindow({ onToggleSidebar, externalPrompt }: ChatWind
           <div className="space-y-3 flex-1 min-w-0">
             <div className="p-4 rounded-xl bg-white text-slate-900 border border-slate-200 shadow-xs space-y-1">
               <p className="font-title-md text-sm text-[#3525cd] font-bold">
-                Kính chào Quý khách đến với EventHHD!
+                Kính chào Quý khách đến với EventViet!
               </p>
               <p className="font-body-md text-xs sm:text-sm text-slate-700 leading-relaxed">
-                Em là <strong>Trợ lý AI Eve</strong>. Em có thể tính toán dự toán sơ bộ, gợi ý kịch bản âm thanh ánh sáng, kiểm tra lịch trống địa điểm 5 sao và sắp xếp lịch hẹn riêng với Giám đốc Điều phối. Quý khách vui lòng chọn câu hỏi phổ biến hoặc gõ yêu cầu cụ thể bên dưới:
+                Em là <strong>Trợ lý AI Eve</strong>. Em có thể giải đáp chính sách dịch vụ, tính toán dự toán sơ bộ, gợi ý kịch bản âm thanh ánh sáng và sắp xếp lịch hẹn riêng 1-1 với Giám đốc Điều phối sự kiện. Quý khách vui lòng chọn câu hỏi phổ biến hoặc gõ yêu cầu cụ thể bên dưới:
               </p>
             </div>
 
@@ -348,14 +432,14 @@ export default function ChatWindow({ onToggleSidebar, externalPrompt }: ChatWind
           </div>
         </div>
 
-        {/* Dynamic / Demo Chat History */}
+        {/* Dynamic Chat Messages */}
         {messages.map((msg) => (
           <div key={msg.id} className="space-y-3">
             {msg.sender === "user" ? (
               /* User Bubble */
               <div className="flex justify-end items-end gap-2.5">
                 <div className="max-w-xl p-3.5 sm:p-4 rounded-xl rounded-br-xs bg-[#4f46e5] text-white shadow-sm">
-                  <p className="font-body-md text-xs sm:text-sm leading-relaxed">{msg.text}</p>
+                  <p className="font-body-md text-xs sm:text-sm leading-relaxed whitespace-pre-line">{msg.text}</p>
                   <div className="text-right mt-1">
                     <span className="font-mono text-[10px] text-indigo-200">{msg.time}</span>
                   </div>
@@ -372,6 +456,15 @@ export default function ChatWindow({ onToggleSidebar, externalPrompt }: ChatWind
                 </div>
                 <div className="space-y-3 flex-1 min-w-0">
                   <div className="p-4 rounded-xl bg-white text-slate-900 border border-slate-200 shadow-xs space-y-2">
+                    <div className="flex items-center justify-between pb-1 border-b border-slate-100 text-[11px] text-slate-500">
+                      <span className="font-semibold text-indigo-600">EventViet AI Advisor</span>
+                      {msg.source && (
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-slate-100 text-slate-600 border border-slate-200">
+                          {msg.source === "ai" ? "Trí tuệ nhân tạo (LLM)" : "Tri thức xác thực"}
+                        </span>
+                      )}
+                    </div>
+
                     <p className="font-body-md text-xs sm:text-sm text-slate-800 leading-relaxed whitespace-pre-line">
                       {msg.text}
                     </p>
@@ -381,45 +474,65 @@ export default function ChatWindow({ onToggleSidebar, externalPrompt }: ChatWind
                       <PricingComparisonCard onSelectTier={(t) => handleUserSendMessage(`Tôi quan tâm ${t}`)} />
                     )}
 
+                    {/* Booking Prompt when AI identifies out-of-scope */}
+                    {msg.needsBooking && msg.type !== "booking_form" && (
+                      <BookingPrompt
+                        onBook={() =>
+                          setMessages((prev) => [
+                            ...prev,
+                            {
+                              id: `form-trigger-${Date.now()}`,
+                              sender: "ai",
+                              text: "Dạ vâng, em xin mời Quý khách để lại thông tin để Giám đốc Điều phối liên hệ tư vấn chuyên sâu 1-1:",
+                              time: new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
+                              type: "booking_form",
+                              bookingDefaultEventType: msg.bookingDefaultEventType,
+                            },
+                          ])
+                        }
+                      />
+                    )}
+
                     {/* Booking Form if type is booking_form */}
                     {msg.type === "booking_form" && (
-                      <InChatBookingCard onSuccess={handleBookingSuccess} />
+                      <InChatBookingCard
+                        defaultEventType={msg.bookingDefaultEventType}
+                        onSuccess={handleBookingSuccess}
+                      />
                     )}
 
                     {/* Booking Confirmation Ticket */}
                     {msg.type === "booking_confirmed" && msg.bookingData && (
                       <BookingConfirmationTicket
                         booking={msg.bookingData}
-                        onReschedule={() => setShowBookingForm(true)}
+                        onReschedule={() =>
+                          setMessages((prev) => [
+                            ...prev,
+                            {
+                              id: `re-form-${Date.now()}`,
+                              sender: "ai",
+                              text: "Dạ vâng, Quý khách vui lòng chọn lại ngày và khung giờ mới:",
+                              time: new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
+                              type: "booking_form",
+                            },
+                          ])
+                        }
+                      />
+                    )}
+
+                    {/* Option Chips (2–4 clickable chips) */}
+                    {msg.options && msg.options.length > 0 && (
+                      <OptionChips options={msg.options} onOptionClick={handleOptionClick} />
+                    )}
+
+                    {/* Related Questions (3 follow-up questions) */}
+                    {msg.relatedQuestions && msg.relatedQuestions.length > 0 && (
+                      <RelatedQuestions
+                        questions={msg.relatedQuestions}
+                        onSelect={(q) => handleUserSendMessage(q)}
                       />
                     )}
                   </div>
-
-                  {/* Contextual Follow-up Suggestion Pills */}
-                  {msg.followups && msg.followups.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                      <span className="font-label-md text-xs text-slate-500 mr-1">
-                        Gợi ý tiếp theo:
-                      </span>
-                      {msg.followups.map((f, i) => (
-                        <button
-                          key={i}
-                          type="button"
-                          onClick={() => handleFollowupClick(f)}
-                          className={`px-3 py-1.5 rounded-full text-xs transition-all shadow-xs flex items-center gap-1 border ${
-                            f.includes("chuyên viên")
-                              ? "bg-[#4f46e5] text-white hover:bg-[#3525cd] border-[#4f46e5] font-semibold"
-                              : "bg-[#dae2fd] hover:bg-indigo-100 text-[#131b2e] border-indigo-200 font-medium"
-                          }`}
-                        >
-                          <span className="material-symbols-outlined text-[15px]">
-                            {f.includes("chuyên viên") ? "calendar_add_on" : "menu_book"}
-                          </span>
-                          <span>{f}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
                 </div>
               </div>
             )}
@@ -456,23 +569,25 @@ export default function ChatWindow({ onToggleSidebar, externalPrompt }: ChatWind
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
-                title="Đính kèm tài liệu RFP hoặc Proposal"
+                className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                title="Đính kèm tài liệu Brief hoặc RFP sự kiện (.pdf, .txt, .docx)"
               >
                 <span className="material-symbols-outlined text-[18px]">attach_file</span>
               </button>
 
               <button
                 type="button"
-                onClick={toggleMic}
-                className={`p-1.5 rounded-lg transition-colors ${
-                  isRecording
+                onClick={toggleVoice}
+                className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                  isListening
                     ? "bg-red-50 text-red-600 animate-pulse ring-1 ring-red-400"
                     : "text-slate-500 hover:text-[#4f46e5] hover:bg-slate-100"
                 }`}
-                title="Nhập liệu bằng giọng nói (Voice AI)"
+                title={isListening ? "Đang lắng nghe giọng nói tiếng Việt... Bấm để dừng" : "Nói bằng giọng nói tiếng Việt (Web Speech AI)"}
               >
-                <span className="material-symbols-outlined text-[18px]">mic</span>
+                <span className="material-symbols-outlined text-[18px]">
+                  {isListening ? "mic_in_browser" : "mic"}
+                </span>
               </button>
             </div>
 
@@ -481,7 +596,7 @@ export default function ChatWindow({ onToggleSidebar, externalPrompt }: ChatWind
               type="text"
               value={inputVal}
               onChange={(e) => setInputVal(e.target.value)}
-              placeholder="Nhập câu hỏi hoặc yêu cầu tư vấn sự kiện (ví dụ: thực đơn tiệc, âm thanh ánh sáng)..."
+              placeholder={isListening ? "Đang lắng nghe giọng nói của Quý khách..." : "Nhập câu hỏi hoặc yêu cầu tư vấn sự kiện (ví dụ: thực đơn tiệc, âm thanh ánh sáng)..."}
               className="flex-1 px-3 py-1.5 bg-transparent text-slate-900 text-xs sm:text-sm focus:outline-none min-w-0"
             />
 
@@ -497,26 +612,25 @@ export default function ChatWindow({ onToggleSidebar, externalPrompt }: ChatWind
           </div>
 
           {/* Quick Prompts & Disclaimer */}
-          <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-slate-500">
-            <span className="font-body-sm text-[11px] flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-              AI tự động hỗ trợ 24/7 • Dữ liệu mã hóa TLS 1.3
-            </span>
-            <div className="flex items-center gap-2 font-mono text-[11px]">
+          <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-slate-500 text-[11px]">
+            <div className="flex items-center gap-2">
+              <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+              <span>AI trả lời từ cơ sở dữ liệu xác thực của EventViet Demo</span>
+            </div>
+            <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => setInputVal("Chiết khấu thanh toán sớm cho hợp đồng quý 1/2026?")}
-                className="hover:text-[#4f46e5] cursor-pointer hover:underline"
+                onClick={() => handleUserSendMessage("Tôi muốn gặp chuyên viên tư vấn trực tiếp 1-1")}
+                className="hover:text-indigo-600 hover:underline cursor-pointer"
               >
-                Hợp đồng & Điều khoản
+                📅 Đặt lịch nhanh 1-1
               </button>
-              <span>•</span>
               <button
                 type="button"
-                onClick={() => setInputVal("Danh sách thực đơn Fusion 8 món cho tiệc VIP?")}
-                className="hover:text-[#4f46e5] cursor-pointer hover:underline"
+                onClick={() => handleUserSendMessage("Khoảng giá tham khảo các gói sự kiện thế nào?")}
+                className="hover:text-indigo-600 hover:underline cursor-pointer"
               >
-                Thực đơn Fine Dining
+                💰 Bảng giá tham khảo
               </button>
             </div>
           </div>

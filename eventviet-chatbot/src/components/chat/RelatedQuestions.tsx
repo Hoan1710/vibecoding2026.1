@@ -9,10 +9,12 @@ export default function RelatedQuestions({
   questions,
   onSelect,
 }: RelatedQuestionsProps) {
+  if (!questions) return null;
+
   return (
-    <div className="ml-11 mr-2 mt-2 bg-[#0E1526]/80 border border-white/[0.08] rounded-2xl p-3.5 backdrop-blur-md">
-      <p className="text-amber-400/80 text-[11px] font-semibold uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-        <span>💡</span>
+    <div className="mt-2.5 bg-gradient-to-br from-indigo-50/70 to-slate-50 border border-indigo-100/90 rounded-xl p-3 shadow-xs">
+      <p className="text-indigo-800 text-[11px] font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5">
+        <span className="material-symbols-outlined text-[15px] text-amber-500">lightbulb</span>
         <span>Câu hỏi liên quan đề xuất</span>
       </p>
       <div className="flex flex-col gap-1.5">
@@ -20,12 +22,13 @@ export default function RelatedQuestions({
           <button
             key={i}
             id={`related-q-${i}`}
+            type="button"
             onClick={() => onSelect(q)}
-            className="text-left text-xs text-slate-300 hover:text-amber-200 hover:bg-amber-500/10 rounded-xl px-3 py-2 transition-all duration-150 border border-transparent hover:border-amber-500/20 flex items-center justify-between group cursor-pointer"
+            className="text-left text-xs text-slate-700 hover:text-indigo-900 bg-white hover:bg-indigo-50/50 rounded-lg px-3 py-2 transition-all duration-150 border border-slate-200/80 hover:border-indigo-300 flex items-center justify-between group cursor-pointer shadow-xs"
           >
-            <span className="line-clamp-1">{q}</span>
-            <span className="text-slate-500 group-hover:text-amber-400 text-xs transition-colors">
-              →
+            <span className="line-clamp-1 font-medium">{q}</span>
+            <span className="material-symbols-outlined text-slate-400 group-hover:text-indigo-600 text-[15px] transition-colors">
+              arrow_forward
             </span>
           </button>
         ))}

@@ -1,51 +1,107 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Booking } from "@/lib/schemas";
-import { addBooking } from "@/lib/booking/storage";
+import { addBooking, loadBookings } from "@/lib/booking/storage";
+import { getAvailableWorkDays, generateDaySlots, type TimeSlot } from "@/lib/booking/slots";
+import { validatePhone, validateName } from "@/lib/booking/validate";
+import { MAX_BOOKINGS_PER_SLOT } from "@/lib/constants";
+import { useAuth } from "@/hooks/useAuth";
 
 interface InChatBookingCardProps {
   onSuccess: (booking: Booking) => void;
+  defaultEventType?: string;
   defaultNote?: string;
 }
 
 export default function InChatBookingCard({
   onSuccess,
+  defaultEventType = "Tư vấn Tổ chức Sự kiện Tổng thể",
   defaultNote = "Tư vấn gói tiệc VIP và phương án tổ chức sự kiện trọn gói.",
 }: InChatBookingCardProps) {
-  const [selectedDate, setSelectedDate] = useState("2026-11-28");
-  const [selectedSlot, setSelectedSlot] = useState("14:00 - 15:00");
-  const [name, setName] = useState("Nguyễn Thanh Tuấn");
-  const [phone, setPhone] = useState("0912 345 678");
+  const { user } = useAuth();
+  const [availableDays, setAvailableDays] = useState<string[]>([]);
+  const [allSlots, setAllSlots] = useState<TimeSlot[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+
+  const [selectedDate, setSelectedDate] = useState<string>("");
+  const [selectedSlot, setSelectedSlot] = useState<string>("09:00");
+  const [name, setName] = useState(user?.name || "");
+  const [phone, setPhone] = useState(user?.phone || "");
+  const [eventType, setEventType] = useState(defaultEventType);
   const [notes, setNotes] = useState(defaultNote);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  const dates = [
-    { label: "Thứ Sáu", display: "28/11", value: "2026-11-28" },
-    { label: "Thứ Bảy", display: "29/11", value: "2026-11-29" },
-    { label: "Thứ Hai", display: "01/12", value: "2026-12-01" },
-    { label: "Thứ Ba", display: "02/12", value: "2026-12-02" },
-  ];
+  useEffect(() => {
+    const days = getAvailableWorkDays(7);
+    setAvailableDays(days);
+    if (days.length > 0) {
+      setSelectedDate(days[0]);
+    }
+    setAllSlots(generateDaySlots());
+    setBookings(loadBookings().bookings);
+  }, []);
 
-  const timeSlots = [
-    { slot: "09:00 - 10:00", label: "09:00 - 10:00 (Sáng)" },
-    { slot: "14:00 - 15:00", label: "14:00 - 15:00 (Chiều)" },
-    { slot: "16:30 - 17:30", label: "16:30 - 17:30 (VIP)" },
-  ];
+  // Cập nhật tên/SĐT nếu user đăng nhập thay đổi
+  useEffect(() => {
+    if (user?.name) setName(user.name);
+    if (user?.phone) setPhone(user.phone);
+  }, [user]);
+
+  // Định dạng ngày hiển thị tiếng Việt
+  const formatDayDisplay = (dateStr: string) => {
+    try {
+      const [y, m, d] = dateStr.split("-").map(Number);
+      const date = new Date(y, m - 1, d);
+      const dayNames = ["CN", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
+      const dayName = dayNames[date.getDay()];
+      return {
+        dayName,
+        displayDate: `${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}`,
+      };
+    } catch {
+      return { dayName: "Ngày", displayDate: dateStr };
+    }
+  };
+
+  // Tính số lượng booking đã có trong slot đã chọn
+  const getSlotCount = (date: string, time: string) => {
+    return bookings.filter(
+      (b) => b.date === date && b.time.startsWith(time) && b.status !== "processed"
+    ).length;
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
 
-    if (!name.trim()) {
-      setErrorMessage("Vui lòng nhập họ và tên của Quý khách.");
+    const nameErr = validateName(name);
+    if (nameErr) {
+      setErrorMessage(nameErr);
       return;
     }
 
     const cleanPhone = phone.replace(/\s+/g, "");
-    if (!/^(0|\+84)(3|5|7|8|9)\d{8}$/.test(cleanPhone)) {
-      setErrorMessage("Số điện thoại không hợp lệ (10 số, đầu số Việt Nam).");
+    const phoneErr = validatePhone(cleanPhone);
+    if (phoneErr) {
+      setErrorMessage(phoneErr);
+      return;
+    }
+
+    if (!selectedDate) {
+      setErrorMessage("Vui lòng chọn ngày gặp mặt.");
+      return;
+    }
+
+    if (!selectedSlot) {
+      setErrorMessage("Vui lòng chọn khung giờ hẹn.");
+      return;
+    }
+
+    // Kiểm tra trùng slot tối đa
+    if (getSlotCount(selectedDate, selectedSlot) >= MAX_BOOKINGS_PER_SLOT) {
+      setErrorMessage(`Khung giờ ${selectedSlot} ngày ${selectedDate} đã kín lịch (tối đa ${MAX_BOOKINGS_PER_SLOT} lịch). Quý khách vui lòng chọn khung giờ khác.`);
       return;
     }
 
@@ -53,12 +109,12 @@ export default function InChatBookingCard({
 
     try {
       const newBooking: Booking = {
-        id: `HHD-${Math.floor(1000 + Math.random() * 9000)}`,
+        id: `EV-${Math.floor(1000 + Math.random() * 9000)}`,
         name: name.trim(),
         phone: cleanPhone,
         date: selectedDate,
         time: selectedSlot,
-        eventType: "Gala VIP & Hội Nghị",
+        eventType: eventType.trim(),
         notes: notes.trim(),
         status: "pending",
         createdAt: new Date().toISOString(),
@@ -75,149 +131,160 @@ export default function InChatBookingCard({
   };
 
   return (
-    <div className="p-5 sm:p-6 rounded-xl bg-white border border-slate-200 shadow-md space-y-5 my-3 text-slate-900 max-w-2xl">
+    <div className="p-4 sm:p-5 rounded-xl bg-white border border-indigo-200 shadow-md space-y-4 my-2 text-slate-900 max-w-2xl animate-in fade-in duration-200">
       {/* Card Header */}
-      <div className="flex items-center justify-between pb-3 bg-slate-50 -mx-5 sm:-mx-6 -mt-5 sm:-mt-6 px-5 sm:px-6 pt-5 rounded-t-xl border-b border-slate-200/80">
+      <div className="flex items-center justify-between pb-3 bg-gradient-to-r from-indigo-50/70 to-slate-50 -mx-4 sm:-mx-5 -mt-4 sm:-mt-5 px-4 sm:px-5 pt-4 rounded-t-xl border-b border-indigo-100">
         <div>
-          <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-[#ffdcc3] text-[#2f1500] uppercase font-mono tracking-wider">
-            Bespoke Concierge
+          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#ffdcc3] text-[#2f1500] uppercase font-mono tracking-wider">
+            EventViet Concierge
           </span>
-          <h3 className="font-title-md text-base text-slate-900 font-bold mt-1">
+          <h3 className="font-title-md text-sm sm:text-base text-slate-900 font-bold mt-0.5">
             Phiếu Đặt Lịch Tư Vấn Trực Tiếp 1-1
           </h3>
         </div>
-        <span className="material-symbols-outlined text-[#4f46e5] text-[28px]">
-          handshake
-        </span>
+        <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-xs">
+          <span className="material-symbols-outlined text-[20px]">event_available</span>
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
         {/* Date Selector */}
         <div>
-          <label className="block font-label-md text-xs text-slate-800 font-semibold mb-2">
-            1. Chọn ngày gặp mặt (Trực tuyến hoặc Tại văn phòng EventHHD)
+          <label className="block font-semibold text-slate-800 mb-1.5 flex items-center justify-between">
+            <span>1. Chọn ngày tư vấn (Từ ngày mai, T2 - T7)</span>
+            <span className="text-[11px] text-indigo-600 font-normal">Tối đa 2 lịch / khung giờ</span>
           </label>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {dates.map((d) => {
-              const isSelected = selectedDate === d.value;
-              return (
-                <button
-                  key={d.value}
-                  type="button"
-                  onClick={() => setSelectedDate(d.value)}
-                  className={`p-2.5 rounded-lg text-center font-medium shadow-xs transition-all border ${
-                    isSelected
-                      ? "bg-[#4f46e5] text-white border-[#4f46e5] ring-2 ring-indigo-200"
-                      : "bg-[#f2f4f6] text-slate-700 hover:bg-slate-200 border-slate-200"
-                  }`}
-                >
-                  <span className={`block font-mono text-[11px] ${isSelected ? "opacity-90 text-white" : "text-slate-500"}`}>
-                    {d.label}
-                  </span>
-                  <span className="font-headline-sm text-sm font-bold block mt-0.5">
-                    {d.display}
-                  </span>
-                </button>
-              );
-            })}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+            {availableDays.length === 0 ? (
+              <div className="col-span-4 text-center py-2 text-slate-400">Đang tải lịch...</div>
+            ) : (
+              availableDays.slice(0, 4).map((d) => {
+                const { dayName, displayDate } = formatDayDisplay(d);
+                const isSelected = selectedDate === d;
+                return (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setSelectedDate(d)}
+                    className={`p-2 rounded-lg text-center border transition-all cursor-pointer ${
+                      isSelected
+                        ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                        : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-indigo-50 hover:border-indigo-300"
+                    }`}
+                  >
+                    <p className="font-bold text-xs">{dayName}</p>
+                    <p className={`text-[11px] ${isSelected ? "text-indigo-100" : "text-slate-500"}`}>{displayDate}</p>
+                  </button>
+                );
+              })
+            )}
           </div>
         </div>
 
-        {/* Time Selector */}
+        {/* Time Slot Selector */}
         <div>
-          <label className="block font-label-md text-xs text-slate-800 font-semibold mb-2">
-            2. Khung giờ khả dụng của Giám đốc Điều phối
+          <label className="block font-semibold text-slate-800 mb-1.5">
+            2. Khung giờ thuận tiện
           </label>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            {timeSlots.map((t) => {
-              const isSelected = selectedSlot === t.slot;
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 max-h-36 overflow-y-auto p-1 bg-slate-50/80 rounded-lg border border-slate-200">
+            {allSlots.map((s) => {
+              const count = getSlotCount(selectedDate, s.time);
+              const isFull = count >= MAX_BOOKINGS_PER_SLOT;
+              const isSelected = selectedSlot === s.time;
               return (
                 <button
-                  key={t.slot}
+                  key={s.time}
                   type="button"
-                  onClick={() => setSelectedSlot(t.slot)}
-                  className={`px-3 py-2.5 rounded-lg text-xs font-semibold text-center transition-all flex items-center justify-center gap-1.5 border ${
-                    isSelected
-                      ? "bg-[#4f46e5] text-white border-[#4f46e5] shadow-xs ring-2 ring-indigo-200"
-                      : "bg-[#f2f4f6] text-slate-700 hover:bg-slate-200 border-slate-200"
+                  disabled={isFull}
+                  onClick={() => setSelectedSlot(s.time)}
+                  className={`p-1.5 rounded-md text-center text-xs font-medium border transition-all ${
+                    isFull
+                      ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed line-through"
+                      : isSelected
+                      ? "bg-indigo-600 text-white border-indigo-600 shadow-xs cursor-pointer"
+                      : "bg-white text-slate-800 border-slate-200 hover:border-indigo-300 cursor-pointer"
                   }`}
                 >
-                  <span className={`material-symbols-outlined text-[16px] ${isSelected ? "text-white" : "text-[#4f46e5]"}`}>
-                    schedule
-                  </span>
-                  <span>{t.label}</span>
+                  <div>{s.label}</div>
+                  {isFull && <span className="text-[9px] text-red-500 font-normal">Kín</span>}
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* Client Inputs */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+        {/* Customer Information */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
           <div>
-            <label className="block font-label-md text-xs text-slate-700 mb-1 font-medium">
-              Họ và tên Quý khách *
+            <label className="block font-medium text-slate-700 mb-1">
+              Họ và tên Quý khách <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
-              required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Nhập họ và tên..."
-              className="w-full px-3.5 py-2.5 rounded-lg bg-[#f2f4f6] text-slate-900 text-xs border border-slate-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4f46e5] transition-all"
+              placeholder="Nguyễn Văn A"
+              className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             />
           </div>
+
           <div>
-            <label className="block font-label-md text-xs text-slate-700 mb-1 font-medium">
-              Số điện thoại liên hệ *
+            <label className="block font-medium text-slate-700 mb-1">
+              Số điện thoại liên hệ <span className="text-red-500">*</span>
             </label>
             <input
               type="tel"
-              required
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              placeholder="VD: 0912 345 678"
-              className="w-full px-3.5 py-2.5 rounded-lg bg-[#f2f4f6] text-slate-900 text-xs font-mono border border-slate-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4f46e5] transition-all"
+              placeholder="0912 345 678"
+              className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             />
           </div>
         </div>
 
-        <div>
-          <label className="block font-label-md text-xs text-slate-700 mb-1 font-medium">
-            Ghi chú yêu cầu đặc biệt
-          </label>
-          <textarea
-            rows={2}
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Ví dụ: Cần hạ cánh trực thăng tại resort, 8 khách yếu nhân..."
-            className="w-full px-3.5 py-2 rounded-lg bg-[#f2f4f6] text-slate-900 text-xs border border-slate-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4f46e5] transition-all resize-none"
-          />
+        {/* Event Type & Notes */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div>
+            <label className="block font-medium text-slate-700 mb-1">Loại hình sự kiện</label>
+            <input
+              type="text"
+              value={eventType}
+              onChange={(e) => setEventType(e.target.value)}
+              placeholder="Gala Dinner, Hội nghị, Ra mắt..."
+              className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            />
+          </div>
+
+          <div>
+            <label className="block font-medium text-slate-700 mb-1">Ghi chú yêu cầu đặc biệt</label>
+            <input
+              type="text"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Số lượng khách, yêu cầu riêng..."
+              className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            />
+          </div>
         </div>
 
         {errorMessage && (
-          <p className="text-xs text-red-600 font-medium">{errorMessage}</p>
+          <div className="p-2 bg-red-50 border border-red-200 text-red-600 rounded-lg text-xs flex items-center gap-1.5">
+            <span className="material-symbols-outlined text-[16px]">error</span>
+            <span>{errorMessage}</span>
+          </div>
         )}
 
-        {/* Footer & Submit */}
-        <div className="pt-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-t border-slate-100">
-          <span className="font-body-sm text-xs text-slate-500 flex items-center gap-1.5">
-            <span className="material-symbols-outlined text-emerald-600 text-[18px]">lock</span>
-            Thông tin được mã hóa bảo mật cấp độ doanh nghiệp
-          </span>
+        <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-lg bg-[#4f46e5] hover:bg-[#3525cd] text-white font-title-md text-xs font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            className="w-full sm:w-auto px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
           >
-            <span className="material-symbols-outlined text-[18px]">
-              assignment_turned_in
-            </span>
-            <span>Xác nhận Đặt lịch tư vấn VIP</span>
+            <span className="material-symbols-outlined text-[16px]">check_circle</span>
+            <span>{isSubmitting ? "Đang ghi nhận..." : "Xác Nhận Đặt Lịch Tư Vấn 1-1"}</span>
           </button>
         </div>
       </form>
     </div>
   );
 }
-

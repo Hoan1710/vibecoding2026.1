@@ -1,6 +1,7 @@
 "use client";
 
 import type { Booking } from "@/lib/schemas";
+import { generateIcsFile } from "@/lib/calendar/generateIcs";
 
 interface BookingConfirmationTicketProps {
   booking: Booking;
@@ -11,15 +12,18 @@ export default function BookingConfirmationTicket({
   booking,
   onReschedule,
 }: BookingConfirmationTicketProps) {
-  const handleAddToCalendar = () => {
-    // Generate Google Calendar Link
-    const title = encodeURIComponent("Lịch tư vấn sự kiện VIP - EventHHD");
+  const handleAddToGoogleCalendar = () => {
+    const title = encodeURIComponent("[EventViet] Lịch tư vấn sự kiện 1-1");
     const details = encodeURIComponent(
-      `Khách hàng: ${booking.name}\nSĐT: ${booking.phone}\nYêu cầu: ${booking.notes || "Tư vấn sự kiện"}\nChuyên gia: Vũ Hoàng Nam (Giám đốc Điều phối Cấp cao)`
+      `Khách hàng: ${booking.name}\nSĐT: ${booking.phone}\nLoại hình: ${booking.eventType || "Tư vấn sự kiện"}\nGhi chú: ${booking.notes || "Không có"}\nChuyên gia: Vũ Hoàng Nam (Giám đốc Điều phối Cấp cao EventViet)`
     );
-    const location = encodeURIComponent("Tầng 28, Pearl Plaza, 561A Điện Biên Phủ, Phường 25, Bình Thạnh, TP.HCM / Online");
+    const location = encodeURIComponent("Văn phòng EventViet - Bitexco Financial Tower, Quận 1 / Online Meet");
     const calUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${details}&location=${location}`;
     window.open(calUrl, "_blank");
+  };
+
+  const handleDownloadIcs = () => {
+    generateIcsFile(booking, "EventViet");
   };
 
   return (
@@ -40,7 +44,7 @@ export default function BookingConfirmationTicket({
               </span>
             </div>
             <span className="font-mono text-xs font-semibold px-2.5 py-1 rounded bg-[#dae2fd] text-[#131b2e] border border-indigo-200">
-              Mã lịch hẹn: #{booking.id}
+              Mã phiếu: #{booking.id}
             </span>
           </div>
 
@@ -51,16 +55,16 @@ export default function BookingConfirmationTicket({
                 Thời gian gặp
               </span>
               <span className="font-title-md text-xs sm:text-sm text-slate-900 font-bold block">
-                {booking.time || "14:00 - 15:00"}
+                {booking.time || "09:00"}
               </span>
               <span className="font-mono text-[11px] text-[#4f46e5] font-semibold">
-                {booking.date || "28/11/2026"}
+                {booking.date || "2026-11-28"}
               </span>
             </div>
 
             <div className="p-3 rounded-lg bg-white border border-slate-200/80 shadow-xs">
               <span className="font-body-sm text-[11px] text-slate-500 block mb-0.5">
-                Chuyên gia tiếp đón
+                Chuyên viên phụ trách
               </span>
               <span className="font-title-md text-xs sm:text-sm text-slate-900 font-bold block">
                 Vũ Hoàng Nam
@@ -72,14 +76,14 @@ export default function BookingConfirmationTicket({
 
             <div className="p-3 rounded-lg bg-white border border-slate-200/80 shadow-xs">
               <span className="font-body-sm text-[11px] text-slate-500 block mb-0.5">
-                Trạng thái lưu trữ
+                Trạng thái hệ thống
               </span>
               <span className="inline-flex items-center gap-1 font-label-md text-xs text-emerald-700 font-semibold mt-0.5">
                 <span className="material-symbols-outlined text-[15px]">cloud_done</span>
-                Đã lưu hệ thống
+                Đã ghi nhận (CRM)
               </span>
               <span className="font-mono text-[10px] text-slate-400 block mt-0.5">
-                SMS & Email đã gửi xác thực
+                SĐT: {booking.phone}
               </span>
             </div>
           </div>
@@ -89,17 +93,26 @@ export default function BookingConfirmationTicket({
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={handleAddToCalendar}
-                className="px-3.5 py-1.5 rounded-lg bg-[#4f46e5] hover:bg-[#3525cd] text-white text-xs font-semibold transition-all flex items-center gap-1.5 shadow-xs"
+                onClick={handleAddToGoogleCalendar}
+                className="px-3.5 py-1.5 rounded-lg bg-[#4f46e5] hover:bg-[#3525cd] text-white text-xs font-semibold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[16px]">calendar_month</span>
-                <span>Lưu vào Google Calendar</span>
+                <span>Google Calendar</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleDownloadIcs}
+                className="px-3.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold transition-all flex items-center gap-1.5 border border-indigo-200 cursor-pointer"
+                title="Tải file .ics để thêm vào Apple Calendar / Outlook"
+              >
+                <span className="material-symbols-outlined text-[16px]">download</span>
+                <span>Tải file .ics (Apple/Outlook)</span>
               </button>
               {onReschedule && (
                 <button
                   type="button"
                   onClick={onReschedule}
-                  className="px-3 py-1.5 rounded-lg bg-[#f2f4f6] hover:bg-slate-200 text-slate-700 text-xs font-medium transition-all flex items-center gap-1.5 border border-slate-200"
+                  className="px-3 py-1.5 rounded-lg bg-[#f2f4f6] hover:bg-slate-200 text-slate-700 text-xs font-medium transition-all flex items-center gap-1.5 border border-slate-200 cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-[16px]">edit_calendar</span>
                   <span>Đổi giờ hẹn</span>
@@ -107,7 +120,7 @@ export default function BookingConfirmationTicket({
               )}
             </div>
             <span className="font-body-sm text-[11px] text-slate-500 italic">
-              Hotline đón tiếp VIP: <strong className="text-slate-900">1900 6886</strong>
+              Hotline hỗ trợ: <strong className="text-slate-900">1900 8899</strong>
             </span>
           </div>
         </div>
@@ -115,4 +128,3 @@ export default function BookingConfirmationTicket({
     </div>
   );
 }
-

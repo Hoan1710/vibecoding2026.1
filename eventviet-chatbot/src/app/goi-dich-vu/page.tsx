@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { loadPricingConfig, type PackagePricingConfig } from "@/lib/services/packageStorage";
 import Link from "next/link";
 import Header from "@/components/shared/Header";
 import Footer from "@/components/shared/Footer";
@@ -10,6 +11,16 @@ export default function PricingPage() {
   const [selectedEventType, setSelectedEventType] = useState("gala");
   const [selectedGuestScale, setSelectedGuestScale] = useState("100-300");
 
+  // Dynamic Pricing Config synced with Admin
+  const [pricingConfig, setPricingConfig] = useState<PackagePricingConfig>(() => loadPricingConfig());
+
+  useEffect(() => {
+    setPricingConfig(loadPricingConfig());
+    const handleSync = () => setPricingConfig(loadPricingConfig());
+    window.addEventListener("eventviet_pricing_changed", handleSync);
+    return () => window.removeEventListener("eventviet_pricing_changed", handleSync);
+  }, []);
+
   // Interactive Cost Calculator State
   const [guestCount, setGuestCount] = useState(200);
   const [venueTier, setVenueTier] = useState<"standard" | "5star" | "resort">("5star");
@@ -18,10 +29,10 @@ export default function PricingPage() {
   const [talentTier, setTalentTier] = useState<"mc" | "vtv_band" | "star">("vtv_band");
 
   // Dynamic cost calculation logic
-  const venueRates = { standard: 600000, "5star": 1200000, resort: 1800000 };
-  const avRates = { jbl: 35000000, lacoustics: 75000000, db: 160000000 };
-  const fbRates = { standard: 450000, fusion: 850000, michelin: 1600000 };
-  const talentRates = { mc: 15000000, vtv_band: 45000000, star: 180000000 };
+  const venueRates = pricingConfig.venueRates;
+  const avRates = pricingConfig.avRates;
+  const fbRates = pricingConfig.fbRates;
+  const talentRates = pricingConfig.talentRates;
 
   const fbTotal = (venueRates[venueTier] + fbRates[fbTier]) * guestCount;
   const techTotal = avRates[avTier];
@@ -36,7 +47,7 @@ export default function PricingPage() {
   };
 
   const handleExportEstimate = () => {
-    const text = `DỰ TOÁN CHI PHÍ SỰ KIỆN - EVENTHHD
+    const text = `DỰ TOÁN CHI PHÍ SỰ KIỆN - EVENTVIET DEMO
 Ngày tính: ${new Date().toLocaleDateString("vi-VN")}
 Quy mô: ${guestCount} khách
 Địa điểm: ${venueTier === "standard" ? "Sảnh 4 sao" : venueTier === "5star" ? "Khách sạn 5 sao quốc tế" : "Resort bờ biển"}
@@ -437,7 +448,7 @@ TỔNG NGÂN SÁCH DỰ KIẾN: ${formatVND(grandTotal)}
               Công Cụ Dự Toán Chi Phí Sự Kiện Trực Tuyến
             </h2>
             <p className="text-xs sm:text-sm text-slate-600">
-              Điều chỉnh số lượng khách mời và các hạng mục kỹ thuật để nhận ngay bảng dự toán chi tiết theo định mức minh bạch của EventHHD.
+              Điều chỉnh số lượng khách mời và các hạng mục kỹ thuật để nhận ngay bảng dự toán chi tiết theo định mức minh bạch của EventViet.
             </p>
           </div>
 
@@ -779,7 +790,7 @@ TỔNG NGÂN SÁCH DỰ KIẾN: ${formatVND(grandTotal)}
               Cam Kết Vàng & Tiêu Chuẩn Dịch Vụ
             </h2>
             <p className="text-xs sm:text-sm text-slate-600">
-              Bốn trụ cột cam kết pháp lý và tiêu chuẩn dịch vụ làm nên thương hiệu tổ chức sự kiện hàng đầu của EventHHD.
+              Bốn trụ cột cam kết pháp lý và tiêu chuẩn dịch vụ làm nên thương hiệu tổ chức sự kiện hàng đầu của EventViet.
             </p>
           </div>
 
@@ -840,7 +851,7 @@ TỔNG NGÂN SÁCH DỰ KIẾN: ${formatVND(grandTotal)}
                 Cần Tư Vấn Riêng Hoặc Khảo Sát Địa Điểm Miễn Phí?
               </h2>
               <p className="text-xs sm:text-sm text-indigo-200 leading-relaxed">
-                Đội ngũ Giám đốc Sản xuất của EventHHD sẵn sàng đến tận nơi khảo sát mặt bằng và xây dựng Maket 3D sơ bộ hoàn toàn miễn phí trong vòng 24 giờ.
+                Đội ngũ Giám đốc Sản xuất của EventViet sẵn sàng đến tận nơi khảo sát mặt bằng và xây dựng Maket 3D sơ bộ hoàn toàn miễn phí trong vòng 24 giờ.
               </p>
             </div>
 
