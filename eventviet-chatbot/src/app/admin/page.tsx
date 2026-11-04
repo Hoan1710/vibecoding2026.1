@@ -243,11 +243,11 @@ export default function AdminDashboardPage() {
             </p>
           </div>
           <Link
-            href="/"
+            href="/login?role=admin"
             className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5"
           >
             <span className="material-symbols-outlined text-[17px]">arrow_back</span>
-            <span>Về Trang Mở Đầu Đăng Nhập</span>
+            <span>Về Cổng Đăng Nhập Quản Trị</span>
           </Link>
         </div>
       </div>

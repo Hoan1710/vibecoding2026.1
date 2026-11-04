@@ -1,135 +1,266 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import Header from "@/components/shared/Header";
-import Footer from "@/components/shared/Footer";
 import { useAuth } from "@/hooks/useAuth";
 
-export default function UserLoginPage() {
+function LoginContent() {
   const router = useRouter();
-  const { loginUser } = useAuth();
+  const searchParams = useSearchParams();
+  const initialRole = searchParams.get("role") === "admin" ? "admin" : "customer";
+  const externalPrompt = searchParams.get("prompt");
 
-  const [name, setName] = useState("Nguyễn Thanh Tuấn");
-  const [phone, setPhone] = useState("0912345678");
-  const [email, setEmail] = useState("khachhang@gmail.com");
-  const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const { loginUser, loginAdmin } = useAuth();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Role toggle: "customer" | "admin"
+  const [role, setRole] = useState<"customer" | "admin">(initialRole);
+
+  // Customer form inputs
+  const [customerName, setCustomerName] = useState("Nguyễn Thanh Tuấn");
+  const [customerPhone, setCustomerPhone] = useState("0912345678");
+  const [customerEmail, setCustomerEmail] = useState("khachhang@gmail.com");
+  const [customerError, setCustomerError] = useState("");
+  const [isCustomerLoading, setIsCustomerLoading] = useState(false);
+
+  // Admin form inputs
+  const [adminEmail, setAdminEmail] = useState("admin@eventviet.vn");
+  const [adminPassword, setAdminPassword] = useState("admin2026");
+  const [adminError, setAdminError] = useState("");
+  const [isAdminLoading, setIsAdminLoading] = useState(false);
+
+  const handleCustomerSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setCustomerError("");
 
-    if (!name.trim()) {
-      setError("Vui lòng nhập họ và tên của Quý khách.");
+    if (!customerName.trim()) {
+      setCustomerError("Vui lòng nhập họ và tên của Quý khách.");
       return;
     }
 
-    const cleanPhone = phone.replace(/\s+/g, "");
+    const cleanPhone = customerPhone.replace(/\s+/g, "");
     if (!/^(0|\+84)(3|5|7|8|9)\d{8}$/.test(cleanPhone)) {
-      setError("Số điện thoại không hợp lệ (10 số, đầu số Việt Nam).");
+      setCustomerError("Số điện thoại không hợp lệ (10 số, đầu số Việt Nam).");
       return;
     }
 
-    setIsLoading(true);
-    loginUser(name, cleanPhone, email);
+    setIsCustomerLoading(true);
+    loginUser(customerName.trim(), cleanPhone, customerEmail);
 
     setTimeout(() => {
-      router.push("/");
-    }, 400);
+      if (externalPrompt) {
+        router.push(`/customer?prompt=${encodeURIComponent(externalPrompt)}`);
+      } else {
+        router.push("/customer");
+      }
+    }, 300);
+  };
+
+  const handleAdminSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setAdminError("");
+
+    setIsAdminLoading(true);
+    const res = loginAdmin(adminEmail, adminPassword);
+    if (!res.success) {
+      setIsAdminLoading(false);
+      setAdminError(res.error || "Mật khẩu quản trị chưa chính xác (Mặc định: admin2026)");
+      return;
+    }
+
+    setTimeout(() => {
+      router.push("/admin");
+    }, 300);
   };
 
   return (
-    <div className="min-h-screen bg-[#f7f9fb] flex flex-col font-sans text-slate-900">
-      <Header />
+    <div className="min-h-screen bg-[#fbfaff] text-slate-900 flex flex-col justify-center items-center p-4 sm:p-6 font-sans relative overflow-hidden selection:bg-purple-500 selection:text-white">
+      {/* Ambient Radial Dome Background (Matching Hình 3 Design) */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[140%] sm:w-[120%] lg:w-[100%] h-[460px] pointer-events-none -z-10">
+        <div className="w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-purple-200/50 via-indigo-100/30 to-transparent blur-2xl"></div>
+        <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[850px] h-[500px] rounded-full border border-purple-300/40 opacity-70"></div>
+      </div>
 
-      <main className="flex-1 flex items-center justify-center p-4 py-12">
-        <div className="bg-white rounded-2xl max-w-md w-full shadow-xl border border-slate-200 p-6 sm:p-8 space-y-6">
-          <div className="text-center space-y-2">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 mx-auto flex items-center justify-center font-bold text-xl shadow-xs">
-              <span className="material-symbols-outlined text-[28px]">person</span>
+      <div className="max-w-md w-full bg-white rounded-3xl shadow-xl border border-purple-100 p-6 sm:p-8 space-y-6 relative z-10">
+        {/* Brand Header */}
+        <div className="text-center space-y-2">
+          <Link href="/" className="inline-flex items-center gap-2 group">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#5b32e6] via-[#6366f1] to-[#7c3aed] text-white flex items-center justify-center font-bold text-lg shadow-md shadow-purple-500/20 group-hover:scale-105 transition-transform">
+              EV
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-              Đăng Nhập Khách Hàng
-            </h1>
-            <p className="text-xs text-slate-500">
-              Đăng nhập để theo dõi lịch hẹn tư vấn và nhận báo giá ưu đãi từ EventViet
-            </p>
-          </div>
+            <div className="flex flex-col text-left">
+              <span className="font-black text-xl tracking-tight text-slate-900 leading-tight">
+                EventViet
+              </span>
+              <span className="text-[10px] text-purple-600 font-bold uppercase tracking-wider">
+                Hệ Thống Đăng Nhập
+              </span>
+            </div>
+          </Link>
+          <p className="text-xs text-slate-500 pt-1">
+            Chọn vai trò để truy cập cổng làm việc tương ứng
+          </p>
+        </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+        {/* Role Toggle Switch */}
+        <div className="p-1 rounded-2xl bg-slate-100 border border-slate-200/80 flex gap-1 text-xs font-bold">
+          <button
+            type="button"
+            onClick={() => setRole("customer")}
+            className={`flex-1 py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              role === "customer"
+                ? "bg-[#5b32e6] text-white shadow-sm"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <span className="material-symbols-outlined text-[17px]">person</span>
+            <span>Khách Hàng</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setRole("admin")}
+            className={`flex-1 py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              role === "admin"
+                ? "bg-slate-900 text-white shadow-sm"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <span className="material-symbols-outlined text-[17px]">admin_panel_settings</span>
+            <span>Ban Quản Trị</span>
+          </button>
+        </div>
+
+        {/* Form: Khách Hàng */}
+        {role === "customer" && (
+          <form onSubmit={handleCustomerSubmit} className="space-y-4 text-xs">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">
+              <label className="block font-bold text-slate-700 mb-1">
                 Họ và tên Quý khách <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
                 placeholder="Nguyễn Văn A"
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-600"
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#5b32e6] transition-all font-medium"
                 required
               />
             </div>
 
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">
+              <label className="block font-bold text-slate-700 mb-1">
                 Số điện thoại liên hệ <span className="text-red-500">*</span>
               </label>
               <input
                 type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
                 placeholder="0912 345 678"
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-600 font-mono"
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#5b32e6] transition-all font-mono font-medium"
                 required
               />
             </div>
 
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">
+              <label className="block font-bold text-slate-700 mb-1">
                 Email nhận kịch bản & báo giá (Không bắt buộc)
               </label>
               <input
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={customerEmail}
+                onChange={(e) => setCustomerEmail(e.target.value)}
                 placeholder="example@gmail.com"
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-600 font-mono"
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#5b32e6] transition-all font-mono font-medium"
               />
             </div>
 
-            {error && (
-              <div className="p-2.5 bg-red-50 border border-red-200 text-red-600 rounded-lg text-xs flex items-center gap-1.5">
+            {customerError && (
+              <div className="p-2.5 bg-red-50 border border-red-200 text-red-600 rounded-xl text-xs flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-[16px]">error</span>
-                <span>{error}</span>
+                <span>{customerError}</span>
               </div>
             )}
 
             <button
               type="submit"
-              disabled={isLoading}
-              className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+              disabled={isCustomerLoading}
+              className="w-full py-3.5 bg-[#5b32e6] hover:bg-[#4a24c2] text-white font-extrabold rounded-xl shadow-md shadow-purple-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
-              <span className="material-symbols-outlined text-[18px]">login</span>
-              <span>{isLoading ? "Đang xác thực..." : "Tiếp Tục Trải Nghiệm"}</span>
+              <span className="material-symbols-outlined text-[18px]">smart_toy</span>
+              <span>{isCustomerLoading ? "Đang truy cập..." : "Vào Trải Nghiệm Chatbot Tư Vấn Sự Kiện"}</span>
             </button>
-
-            <div className="text-center pt-2">
-              <Link
-                href="/"
-                className="text-xs text-slate-500 hover:text-indigo-600 inline-flex items-center gap-1 font-medium"
-              >
-                <span className="material-symbols-outlined text-[15px]">arrow_back</span>
-                <span>Quay lại trang chủ tư vấn</span>
-              </Link>
-            </div>
           </form>
-        </div>
-      </main>
+        )}
 
-      <Footer />
+        {/* Form: Ban Quản Trị */}
+        {role === "admin" && (
+          <form onSubmit={handleAdminSubmit} className="space-y-4 text-xs">
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">
+                Email Quản Trị Viên <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="email"
+                value={adminEmail}
+                onChange={(e) => setAdminEmail(e.target.value)}
+                placeholder="admin@eventviet.vn"
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all font-mono font-medium"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">
+                Mật Khẩu Xác Thực Quản Trị <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="password"
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all font-mono font-medium"
+                required
+              />
+              <p className="text-[10px] text-slate-400 mt-1">Mật khẩu mặc định hệ thống: <code className="text-purple-600 font-bold">admin2026</code></p>
+            </div>
+
+            {adminError && (
+              <div className="p-2.5 bg-red-50 border border-red-200 text-red-600 rounded-xl text-xs flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[16px]">error</span>
+                <span>{adminError}</span>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isAdminLoading}
+              className="w-full py-3.5 bg-slate-900 hover:bg-black text-white font-extrabold rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            >
+              <span className="material-symbols-outlined text-[18px]">security</span>
+              <span>{isAdminLoading ? "Đang xác thực..." : "Đăng Nhập Cổng Điều Hành Quản Trị"}</span>
+            </button>
+          </form>
+        )}
+
+        {/* Back Link to First Page (Hình 3) */}
+        <div className="text-center pt-2 border-t border-slate-100">
+          <Link
+            href="/"
+            className="text-xs text-slate-500 hover:text-[#5b32e6] inline-flex items-center gap-1.5 font-bold transition-colors"
+          >
+            <span className="material-symbols-outlined text-[16px]">arrow_back</span>
+            <span>Quay lại trang chủ</span>
+          </Link>
+        </div>
+      </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#fbfaff] flex items-center justify-center text-xs text-slate-400">Đang tải...</div>}>
+      <LoginContent />
+    </Suspense>
   );
 }
