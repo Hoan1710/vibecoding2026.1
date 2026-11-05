@@ -186,22 +186,31 @@ export default function Header({ role }: HeaderProps = {}) {
           </div>
         </div>
 
+        {/* Mobile Backdrop Overlay */}
+        {mobileMenuOpen && (
+          <div
+            className="md:hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-xs"
+            onClick={() => setMobileMenuOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+
         {/* Mobile Navigation Drawer */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-slate-200 bg-white px-4 py-4 space-y-3 shadow-lg">
-            <div className="flex flex-col gap-1.5">
+          <div className="md:hidden relative z-50 border-t border-slate-200 bg-white px-4 py-4 space-y-4 shadow-xl animate-in slide-in-from-top-2 duration-150">
+            <div className="flex flex-col gap-2">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-colors ${
+                  className={`px-4 py-4 rounded-xl text-base font-semibold flex items-center gap-3 transition-colors ${
                     link.active
                       ? "bg-[#4f46e5] text-white shadow-sm"
                       : "text-slate-700 hover:bg-slate-100"
                   }`}
                 >
-                  <span className="material-symbols-outlined text-[18px]">
+                  <span className="material-symbols-outlined text-[22px]">
                     {link.icon}
                   </span>
                   <span>{link.label}</span>
@@ -214,14 +223,14 @@ export default function Header({ role }: HeaderProps = {}) {
                   setMobileMenuOpen(false);
                   setMyBookingsOpen(true);
                 }}
-                className="px-3.5 py-2.5 rounded-xl text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 flex items-center gap-2.5 text-left"
+                className="px-4 py-4 rounded-xl text-base font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 flex items-center gap-3 text-left transition-colors cursor-pointer"
               >
-                <span className="material-symbols-outlined text-[18px]">calendar_month</span>
+                <span className="material-symbols-outlined text-[22px]">calendar_month</span>
                 <span>Lịch Hẹn Của Tôi</span>
               </button>
             </div>
 
-            <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
               {isUserLoggedIn && user ? (
                 <>
                   <span>Khách hàng: <strong>{user.name}</strong></span>
@@ -231,7 +240,7 @@ export default function Header({ role }: HeaderProps = {}) {
                       logoutUser();
                       setMobileMenuOpen(false);
                     }}
-                    className="text-red-600 font-semibold hover:underline"
+                    className="text-red-600 font-semibold py-2 hover:underline cursor-pointer"
                   >
                     Đăng xuất
                   </button>
@@ -240,7 +249,7 @@ export default function Header({ role }: HeaderProps = {}) {
                 <Link
                   href="/login"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="text-indigo-600 font-bold hover:underline"
+                  className="text-indigo-600 font-bold py-2 hover:underline inline-block"
                 >
                   Đăng nhập tài khoản
                 </Link>

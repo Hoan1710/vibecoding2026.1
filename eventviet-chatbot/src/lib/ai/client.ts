@@ -2,7 +2,7 @@ import type { FAQ } from "@/types";
 import { buildSystemPrompt, buildUserMessage } from "./prompt";
 import { parseAIResponse } from "./parseResponse";
 import { getMockResponse } from "./mock";
-import type { ChatResponse } from "@/lib/schemas";
+import type { ChatResponse, CustomerContext } from "@/lib/schemas";
 import { AI_TIMEOUT_MS } from "@/lib/constants";
 
 /**
@@ -11,12 +11,17 @@ import { AI_TIMEOUT_MS } from "@/lib/constants";
 async function callAI(
   message: string,
   history: Array<{ role: "user" | "assistant"; content: string }>,
-  contextFAQs: FAQ[]
+  contextFAQs: FAQ[],
+  customerContext?: CustomerContext | null
 ): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   const baseURL = process.env.AI_BASE_URL ?? "https://api.anthropic.com";
   const model = process.env.AI_MODEL ?? "claude-haiku-4-5";
-  const systemPrompt = buildSystemPrompt(contextFAQs);
+  const askedQuestions = [
+    ...history.filter((m) => m.role === "user").map((m) => m.content).slice(-3),
+    message,
+  ];
+  const systemPrompt = buildSystemPrompt(contextFAQs, { customerContext, askedQuestions });
   const userMessages = buildUserMessage(message, history);
 
   // Xác định endpoint: Anthropic native hay OpenAI-compatible
@@ -80,7 +85,8 @@ export async function callAIWithFallback(
   message: string,
   history: Array<{ role: "user" | "assistant"; content: string }>,
   contextFAQs: FAQ[],
-  matchedFaqIds: string[]
+  matchedFaqIds: string[],
+  customerContext: CustomerContext | null = null
 ): Promise<ChatResponse> {
   // Chế độ mock
   if (process.env.AI_MODE === "mock") {
@@ -95,7 +101,7 @@ export async function callAIWithFallback(
   // Attempt 1
   try {
     const raw = await Promise.race([
-      callAI(message, history, contextFAQs),
+      callAI(message, history, contextFAQs, customerContext),
       timeout(AI_TIMEOUT_MS),
     ]);
     return parseAIResponse(raw);
@@ -104,7 +110,7 @@ export async function callAIWithFallback(
     // Attempt 2 (retry 1 lần)
     try {
       const raw = await Promise.race([
-        callAI(message, history, contextFAQs),
+        callAI(message, history, contextFAQs, customerContext),
         timeout(AI_TIMEOUT_MS),
       ]);
       return parseAIResponse(raw);

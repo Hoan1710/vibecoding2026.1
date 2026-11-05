@@ -62,6 +62,18 @@ describe("loadBookings", () => {
     expect(bookings).toHaveLength(0);
     expect(wasReset).toBe(true);
   });
+
+  it("migrate v1 -> v2 giữ nguyên booking cũ và cập nhật schemaVersion", () => {
+    const oldBooking = makeBooking({ name: "Khách Cũ v1" });
+    localStorageMock.setItem(
+      "eventviet_bookings",
+      JSON.stringify({ schemaVersion: 1, bookings: [oldBooking] })
+    );
+    const { bookings, wasReset } = loadBookings();
+    expect(wasReset).toBe(false);
+    expect(bookings).toHaveLength(1);
+    expect(bookings[0].name).toBe("Khách Cũ v1");
+  });
 });
 
 describe("saveBookings & loadBookings", () => {

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
-import type { ChatResponse } from "@/lib/schemas";
+import { useState, useCallback, useRef, useEffect } from "react";
+import type { ChatResponse, CustomerContext } from "@/lib/schemas";
 
 export interface Message {
   id: string;
@@ -11,11 +11,16 @@ export interface Message {
   timestamp: Date;
 }
 
-export function useChat() {
+export function useChat(customerContext?: CustomerContext | null) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const historyRef = useRef<Array<{ role: "user" | "assistant"; content: string }>>([]);
+  const customerContextRef = useRef<CustomerContext | null | undefined>(customerContext);
+
+  useEffect(() => {
+    customerContextRef.current = customerContext;
+  }, [customerContext]);
 
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || isLoading) return;
@@ -44,6 +49,7 @@ export function useChat() {
         body: JSON.stringify({
           message: text,
           history: historyRef.current.slice(0, -1), // Không gửi tin nhắn hiện tại
+          customerContext: customerContextRef.current ?? undefined,
         }),
       });
 
@@ -80,11 +86,21 @@ export function useChat() {
     }
   }, [isLoading]);
 
+  const appendContext = useCallback(
+    (role: "user" | "assistant", content: string) => {
+      historyRef.current = [
+        ...historyRef.current,
+        { role, content },
+      ].slice(-12);
+    },
+    []
+  );
+
   const clearMessages = useCallback(() => {
     setMessages([]);
     historyRef.current = [];
     setError(null);
   }, []);
 
-  return { messages, isLoading, error, sendMessage, clearMessages };
+  return { messages, isLoading, error, sendMessage, clearMessages, appendContext };
 }

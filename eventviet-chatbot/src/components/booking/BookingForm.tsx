@@ -91,7 +91,7 @@ export default function BookingForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="p-5 sm:p-6 text-slate-100">
+    <form onSubmit={handleSubmit} className="p-4 sm:p-6 text-slate-100">
       {/* Mobile handle indicator */}
       <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-4 sm:hidden" />
 
@@ -119,11 +119,11 @@ export default function BookingForm({
         </button>
       </div>
 
-      <div className="space-y-4">
+      <div className="flex flex-col gap-4 w-full">
         {/* Tên */}
-        <div>
+        <div className="flex flex-col gap-1.5 w-full">
           <label
-            className="block text-slate-300 text-xs font-semibold mb-1.5"
+            className="block text-slate-300 text-xs font-semibold"
             htmlFor="booking-name"
           >
             Họ tên người liên hệ *
@@ -136,14 +136,14 @@ export default function BookingForm({
             onChange={handleChange}
             placeholder="Ví dụ: Nguyễn Hoàng Nam"
             maxLength={50}
-            className={`w-full bg-[#0A0F1D] text-white placeholder-slate-500 rounded-xl px-4 py-3 text-sm border ${
+            className={`w-full h-12 bg-[#0A0F1D] text-white placeholder-slate-500 rounded-xl px-4 py-3 text-sm border ${
               errors.name
                 ? "border-rose-500 ring-1 ring-rose-500/30"
                 : "border-white/10 focus:border-amber-400 focus:ring-1 focus:ring-amber-400/20"
             } outline-none transition-all`}
           />
           {errors.name && (
-            <p className="text-rose-400 text-xs mt-1.5 flex items-center gap-1">
+            <p className="text-rose-400 text-xs mt-1 flex items-center gap-1">
               <span>⚠️</span>
               <span>{errors.name}</span>
             </p>
@@ -151,9 +151,9 @@ export default function BookingForm({
         </div>
 
         {/* Số điện thoại */}
-        <div>
+        <div className="flex flex-col gap-1.5 w-full">
           <label
-            className="block text-slate-300 text-xs font-semibold mb-1.5"
+            className="block text-slate-300 text-xs font-semibold"
             htmlFor="booking-phone"
           >
             Số điện thoại nhận tư vấn *
@@ -165,14 +165,14 @@ export default function BookingForm({
             value={form.phone}
             onChange={handleChange}
             placeholder="Ví dụ: 0912345678"
-            className={`w-full bg-[#0A0F1D] text-white placeholder-slate-500 rounded-xl px-4 py-3 text-sm border ${
+            className={`w-full h-12 bg-[#0A0F1D] text-white placeholder-slate-500 rounded-xl px-4 py-3 text-sm border ${
               errors.phone
                 ? "border-rose-500 ring-1 ring-rose-500/30"
                 : "border-white/10 focus:border-amber-400 focus:ring-1 focus:ring-amber-400/20"
             } outline-none transition-all`}
           />
           {errors.phone && (
-            <p className="text-rose-400 text-xs mt-1.5 flex items-center gap-1">
+            <p className="text-rose-400 text-xs mt-1 flex items-center gap-1">
               <span>⚠️</span>
               <span>{errors.phone}</span>
             </p>
@@ -180,20 +180,20 @@ export default function BookingForm({
         </div>
 
         {/* Loại sự kiện */}
-        <div>
+        <div className="flex flex-col gap-1.5 w-full">
           <label
-            className="block text-slate-300 text-xs font-semibold mb-1.5"
+            className="block text-slate-300 text-xs font-semibold"
             htmlFor="booking-event-type"
           >
             Loại hình sự kiện quan tâm
           </label>
-          <div className="relative">
+          <div className="relative w-full">
             <select
               id="booking-event-type"
               name="eventType"
               value={form.eventType}
               onChange={handleChange}
-              className="w-full bg-[#0A0F1D] text-white rounded-xl px-4 py-3 text-sm border border-white/10 focus:border-amber-400 focus:ring-1 focus:ring-amber-400/20 outline-none transition-all appearance-none cursor-pointer [&>option]:bg-[#0E1424]"
+              className="w-full h-12 bg-[#0A0F1D] text-white rounded-xl px-4 py-3 text-sm border border-white/10 focus:border-amber-400 focus:ring-1 focus:ring-amber-400/20 outline-none transition-all appearance-none cursor-pointer [&>option]:bg-[#0E1424]"
             >
               <option value="">-- Chọn loại hình sự kiện --</option>
               {EVENT_TYPES.map((t) => (
@@ -241,9 +241,9 @@ export default function BookingForm({
         />
 
         {/* Ghi chú */}
-        <div>
+        <div className="flex flex-col gap-1.5 w-full">
           <label
-            className="block text-slate-300 text-xs font-semibold mb-1.5"
+            className="block text-slate-300 text-xs font-semibold"
             htmlFor="booking-notes"
           >
             Yêu cầu thêm (quy mô khách, ngân sách dự kiến, địa điểm...)

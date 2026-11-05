@@ -13,6 +13,12 @@ export function getMockResponse(
       "Cảm ơn bạn đã liên hệ EventViet Demo! Hiện tại hệ thống AI đang tạm thời gián đoạn. Vui lòng đặt lịch tư vấn trực tiếp để được hỗ trợ nhanh nhất.",
     options: [
       {
+        id: "opt-req",
+        label: "📝 Chọn yêu cầu & xem giá",
+        action: "open_requirements",
+        payload: "",
+      },
+      {
         id: "opt-booking",
         label: "📅 Đặt lịch tư vấn",
         action: "open_booking",
@@ -23,12 +29,6 @@ export function getMockResponse(
         label: "📋 Xem dịch vụ",
         action: "ask",
         payload: "EventViet Demo cung cấp những dịch vụ gì?",
-      },
-      {
-        id: "opt-price",
-        label: "💰 Hỏi về giá",
-        action: "ask",
-        payload: "Chi phí tổ chức sự kiện là bao nhiêu?",
       },
     ],
     related_questions: [
@@ -57,16 +57,16 @@ export function getOutOfScopeResponse(matchedFaqIds: string[] = []): ChatRespons
         payload: "",
       },
       {
+        id: "opt-req",
+        label: "📝 Chọn yêu cầu & xem giá",
+        action: "open_requirements",
+        payload: "",
+      },
+      {
         id: "opt-service",
         label: "🎪 Tìm hiểu dịch vụ",
         action: "ask",
         payload: "EventViet Demo cung cấp những dịch vụ gì?",
-      },
-      {
-        id: "opt-type",
-        label: "🎭 Loại sự kiện",
-        action: "ask",
-        payload: "EventViet Demo tổ chức những loại sự kiện nào?",
       },
     ],
     related_questions: [
