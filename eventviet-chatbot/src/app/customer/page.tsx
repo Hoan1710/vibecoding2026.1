@@ -335,31 +335,52 @@ TỔNG DỰ TOÁN NGÂN SÁCH: ${formatVND(grandTotal)}
       {/* ── MAIN CONTENT ACCORDING TO ACTIVE TAB ────────────────────────────── */}
       <main className="w-full flex-1 min-h-0 flex flex-col overflow-hidden relative">
         {/* TAB 1: CHATBOT TƯ VẤN & ĐẶT LỊCH */}
-        {activeTab === "chat" && (
-          <div className="relative w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4 flex-1 min-h-0 flex flex-col overflow-hidden">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 min-h-0 items-stretch">
-              <div
-                className={`flex flex-col h-full min-h-0 transition-all duration-300 ${
-                  sidebarOpen ? "lg:col-span-8" : "lg:col-span-12"
-                }`}
-              >
-                <ChatWindow
-                  onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-                  externalPrompt={selectedPrompt}
-                />
-              </div>
+        {/* LUÔN mount ChatWindow, chỉ ẩn bằng CSS để giữ nguyên state hội thoại */}
+        <div
+          aria-hidden={activeTab !== "chat"}
+          className={`relative w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4 flex-1 min-h-0 flex-col overflow-hidden ${
+            activeTab === "chat" ? "flex" : "hidden"
+          }`}
+        >
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 min-h-0 items-stretch">
+            <div
+              className={`flex flex-col h-full min-h-0 transition-all duration-300 ${
+                sidebarOpen ? "lg:col-span-8" : "lg:col-span-12"
+              }`}
+            >
+              <ChatWindow
+                isActive={activeTab === "chat"}
+                onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+                externalPrompt={selectedPrompt}
+              />
+            </div>
 
-              {sidebarOpen && (
+            {sidebarOpen && (
+              <>
+                {/* Desktop HelpSidebar */}
                 <div className="hidden lg:flex lg:col-span-4 flex-col h-full min-h-0 overflow-hidden">
                   <HelpSidebar
                     onSelectQuestion={handleSelectFaqPrompt}
                     onToggleHide={() => setSidebarOpen(false)}
                   />
                 </div>
-              )}
-            </div>
+
+                {/* Mobile HelpSidebar Drawer */}
+                <div className="lg:hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex justify-end animate-in fade-in duration-200">
+                  <div className="w-[85%] max-w-sm h-full bg-white shadow-2xl flex flex-col overflow-hidden">
+                    <HelpSidebar
+                      onSelectQuestion={(q) => {
+                        handleSelectFaqPrompt(q);
+                        setSidebarOpen(false);
+                      }}
+                      onToggleHide={() => setSidebarOpen(false)}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
           </div>
-        )}
+        </div>
 
         {/* TAB 2: LỊCH HẸN CỦA TÔI */}
         {activeTab === "my_bookings" && (

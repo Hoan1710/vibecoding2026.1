@@ -2,6 +2,7 @@
 
 import type { Booking } from "@/lib/schemas";
 import { generateIcsFile } from "@/lib/calendar/generateIcs";
+import { formatVnd } from "@/lib/quote/format";
 
 interface BookingConfirmationTicketProps {
   booking: Booking;
@@ -87,6 +88,29 @@ export default function BookingConfirmationTicket({
               </span>
             </div>
           </div>
+
+          {/* Requirements Details if present */}
+          {booking.requirements && (
+            <div className="p-3 rounded-lg bg-indigo-50/70 border border-indigo-150 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[16px] text-[#4f46e5]">receipt_long</span>
+                  <span>Yêu cầu chi tiết ({booking.requirements.selection.guestCount} khách)</span>
+                </span>
+                <span className="text-xs font-black text-[#3525cd]">
+                  Tạm tính: {formatVnd(booking.requirements.subtotal)}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1 text-[11px]">
+                {booking.requirements.lines.map((l, i) => (
+                  <div key={i} className="p-1.5 rounded bg-white border border-slate-100 flex flex-col">
+                    <span className="text-[10px] text-slate-400">{l.categoryLabel}</span>
+                    <span className="font-semibold text-slate-800 truncate">{l.optionLabel}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Ticket Actions */}
           <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-slate-100">

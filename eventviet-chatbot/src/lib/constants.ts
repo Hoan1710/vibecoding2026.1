@@ -25,5 +25,32 @@ export const RATE_LIMIT_MAX = 20;
 export const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 phút
 
 // Schema version cho localStorage
-export const BOOKING_SCHEMA_VERSION = 1;
+export const BOOKING_SCHEMA_VERSION = 2;
 export const BOOKING_STORAGE_KEY = "eventviet_bookings";
+
+// Customer & Session storage constants
+export const CUSTOMER_STORAGE_KEY = "eventviet_customers";
+export const SESSION_STORAGE_KEY = "eventviet_sessions";
+export const CUSTOMER_SCHEMA_VERSION = 1 as const;
+export const SESSION_SCHEMA_VERSION = 1 as const;
+export const MAX_SESSIONS_PER_CUSTOMER = 20;
+export const MAX_MESSAGES_PER_SESSION = 100;
+export const DOCUMENT_SEARCH_THRESHOLD = 1; // min score để hiện document results
+export const RESCHEDULE_KEYWORDS = [
+  "đổi lịch",
+  "thay đổi lịch",
+  "dời lịch",
+  "reschedule",
+  "đổi hẹn",
+  "thay lịch",
+  "dời hẹn",
+];
+export const URGENT_KEYWORDS = [
+  "gấp",
+  "khẩn",
+  "urgent",
+  "ngay bây giờ",
+  "liên hệ ngay",
+  "cần gặp ngay",
+  "khẩn cấp",
+];

@@ -1,6 +1,7 @@
 "use client";
 
 import type { Booking } from "@/lib/schemas";
+import { formatVnd } from "@/lib/quote/format";
 
 interface BookingTableProps {
   bookings: Booking[];
@@ -103,6 +104,13 @@ export default function BookingTable({
                     <span className="inline-block px-2.5 py-1 rounded-lg bg-white/[0.05] border border-white/10 text-slate-300 text-xs font-medium">
                       {booking.eventType ?? "Tư vấn chung"}
                     </span>
+                    {booking.requirements && (
+                      <div className="mt-1 flex items-center gap-1 text-[11px] text-amber-300">
+                        <span className="px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 font-mono">
+                          ★ Có yêu cầu chi tiết ({formatVnd(booking.requirements.subtotal)})
+                        </span>
+                      </div>
+                    )}
                   </td>
 
                   {/* Status Badge */}

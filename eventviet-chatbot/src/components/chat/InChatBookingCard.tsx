@@ -1,35 +1,49 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import type { Booking } from "@/lib/schemas";
+import type { Booking, QuoteSnapshot } from "@/lib/schemas";
 import { addBooking, loadBookings } from "@/lib/booking/storage";
 import { getAvailableWorkDays, generateDaySlots, type TimeSlot } from "@/lib/booking/slots";
 import { validatePhone, validateName } from "@/lib/booking/validate";
 import { MAX_BOOKINGS_PER_SLOT } from "@/lib/constants";
 import { useAuth } from "@/hooks/useAuth";
+import { formatVnd } from "@/lib/quote/format";
 
 interface InChatBookingCardProps {
   onSuccess: (booking: Booking) => void;
   defaultEventType?: string;
   defaultNote?: string;
+  requirements?: QuoteSnapshot;
 }
 
 export default function InChatBookingCard({
   onSuccess,
   defaultEventType = "Tư vấn Tổ chức Sự kiện Tổng thể",
   defaultNote = "Tư vấn gói tiệc VIP và phương án tổ chức sự kiện trọn gói.",
+  requirements,
 }: InChatBookingCardProps) {
   const { user } = useAuth();
   const [availableDays, setAvailableDays] = useState<string[]>([]);
   const [allSlots, setAllSlots] = useState<TimeSlot[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
 
+  // Concept name nếu có trong requirements
+  const conceptName = requirements?.lines.find((l) =>
+    l.categoryLabel.toLowerCase().includes("concept")
+  )?.optionLabel;
+
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedSlot, setSelectedSlot] = useState<string>("09:00");
   const [name, setName] = useState(user?.name || "");
   const [phone, setPhone] = useState(user?.phone || "");
-  const [eventType, setEventType] = useState(defaultEventType);
-  const [notes, setNotes] = useState(defaultNote);
+  const [eventType, setEventType] = useState(
+    conceptName
+      ? `Sự kiện Concept ${conceptName} (${requirements?.selection.guestCount} khách)`
+      : defaultEventType
+  );
+  const [notes, setNotes] = useState(
+    requirements?.selection.note || defaultNote
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -108,14 +122,16 @@ export default function InChatBookingCard({
     setIsSubmitting(true);
 
     try {
+      const safeId = `EV-${Date.now().toString().slice(-4)}${Math.floor(10 + Math.random() * 90)}`;
       const newBooking: Booking = {
-        id: `EV-${Math.floor(1000 + Math.random() * 9000)}`,
+        id: safeId,
         name: name.trim(),
         phone: cleanPhone,
         date: selectedDate,
         time: selectedSlot,
         eventType: eventType.trim(),
         notes: notes.trim(),
+        requirements,
         status: "pending",
         createdAt: new Date().toISOString(),
       };
@@ -148,17 +164,39 @@ export default function InChatBookingCard({
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
+        {/* Requirements Summary if present */}
+        {requirements && (
+          <div className="p-3 bg-indigo-50/80 rounded-xl border border-indigo-150 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-slate-800 flex items-center gap-1">
+                <span className="material-symbols-outlined text-[15px] text-[#4f46e5]">receipt_long</span>
+                <span>Yêu cầu sự kiện đã chọn ({requirements.selection.guestCount} khách):</span>
+              </span>
+              <span className="text-xs font-black text-[#3525cd]">
+                {formatVnd(requirements.subtotal)}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1 text-[10px]">
+              {requirements.lines.map((l, i) => (
+                <span key={i} className="px-1.5 py-0.5 rounded bg-white text-slate-700 border border-indigo-100">
+                  {l.categoryLabel}: <strong>{l.optionLabel}</strong>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Date Selector */}
         <div>
           <label className="block font-semibold text-slate-800 mb-1.5 flex items-center justify-between">
             <span>1. Chọn ngày tư vấn (Từ ngày mai, T2 - T7)</span>
             <span className="text-[11px] text-indigo-600 font-normal">Tối đa 2 lịch / khung giờ</span>
           </label>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+          <div className="flex gap-2 overflow-x-auto pb-1.5 scrollbar-hide py-1">
             {availableDays.length === 0 ? (
-              <div className="col-span-4 text-center py-2 text-slate-400">Đang tải lịch...</div>
+              <div className="text-center py-2 text-slate-400 text-xs">Đang tải lịch...</div>
             ) : (
-              availableDays.slice(0, 4).map((d) => {
+              availableDays.slice(0, 7).map((d) => {
                 const { dayName, displayDate } = formatDayDisplay(d);
                 const isSelected = selectedDate === d;
                 return (
@@ -166,7 +204,7 @@ export default function InChatBookingCard({
                     key={d}
                     type="button"
                     onClick={() => setSelectedDate(d)}
-                    className={`p-2 rounded-lg text-center border transition-all cursor-pointer ${
+                    className={`shrink-0 min-w-[56px] sm:min-w-[64px] px-2.5 py-2 rounded-lg text-center border transition-all cursor-pointer ${
                       isSelected
                         ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
                         : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-indigo-50 hover:border-indigo-300"
@@ -186,7 +224,7 @@ export default function InChatBookingCard({
           <label className="block font-semibold text-slate-800 mb-1.5">
             2. Khung giờ thuận tiện
           </label>
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 max-h-36 overflow-y-auto p-1 bg-slate-50/80 rounded-lg border border-slate-200">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-40 overflow-y-auto p-1.5 bg-slate-50/80 rounded-lg border border-slate-200">
             {allSlots.map((s) => {
               const count = getSlotCount(selectedDate, s.time);
               const isFull = count >= MAX_BOOKINGS_PER_SLOT;
@@ -197,7 +235,7 @@ export default function InChatBookingCard({
                   type="button"
                   disabled={isFull}
                   onClick={() => setSelectedSlot(s.time)}
-                  className={`p-1.5 rounded-md text-center text-xs font-medium border transition-all ${
+                  className={`p-2.5 rounded-md text-center text-xs font-medium border transition-all min-h-[44px] flex flex-col items-center justify-center ${
                     isFull
                       ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed line-through"
                       : isSelected
@@ -214,8 +252,8 @@ export default function InChatBookingCard({
         </div>
 
         {/* Customer Information */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-          <div>
+        <div className="flex flex-col gap-3 pt-1 w-full">
+          <div className="w-full">
             <label className="block font-medium text-slate-700 mb-1">
               Họ và tên Quý khách <span className="text-red-500">*</span>
             </label>
@@ -224,11 +262,11 @@ export default function InChatBookingCard({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Nguyễn Văn A"
-              className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-lg text-slate-900 text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 min-h-[44px]"
             />
           </div>
 
-          <div>
+          <div className="w-full">
             <label className="block font-medium text-slate-700 mb-1">
               Số điện thoại liên hệ <span className="text-red-500">*</span>
             </label>
@@ -237,32 +275,32 @@ export default function InChatBookingCard({
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="0912 345 678"
-              className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-lg text-slate-900 text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 min-h-[44px]"
             />
           </div>
         </div>
 
         {/* Event Type & Notes */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          <div>
+        <div className="flex flex-col gap-3 w-full">
+          <div className="w-full">
             <label className="block font-medium text-slate-700 mb-1">Loại hình sự kiện</label>
             <input
               type="text"
               value={eventType}
               onChange={(e) => setEventType(e.target.value)}
               placeholder="Gala Dinner, Hội nghị, Ra mắt..."
-              className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-lg text-slate-900 text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 min-h-[44px]"
             />
           </div>
 
-          <div>
+          <div className="w-full">
             <label className="block font-medium text-slate-700 mb-1">Ghi chú yêu cầu đặc biệt</label>
             <input
               type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Số lượng khách, yêu cầu riêng..."
-              className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-lg text-slate-900 text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 min-h-[44px]"
             />
           </div>
         </div>
@@ -278,9 +316,9 @@ export default function InChatBookingCard({
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full sm:w-auto px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+            className="w-full sm:w-auto px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 min-h-[44px] text-xs sm:text-sm"
           >
-            <span className="material-symbols-outlined text-[16px]">check_circle</span>
+            <span className="material-symbols-outlined text-[18px]">check_circle</span>
             <span>{isSubmitting ? "Đang ghi nhận..." : "Xác Nhận Đặt Lịch Tư Vấn 1-1"}</span>
           </button>
         </div>

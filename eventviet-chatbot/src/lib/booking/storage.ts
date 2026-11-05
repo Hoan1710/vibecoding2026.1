@@ -23,8 +23,21 @@ export function loadBookings(): {
     const parsed = JSON.parse(raw);
     const result = BookingStorageSchema.safeParse(parsed);
 
-    if (!result.success || result.data.schemaVersion !== BOOKING_SCHEMA_VERSION) {
-      // Dữ liệu hỏng hoặc version cũ → reset
+    if (!result.success) {
+      // Dữ liệu hỏng → reset
+      localStorage.removeItem(BOOKING_STORAGE_KEY);
+      return { bookings: [], wasReset: true };
+    }
+
+    // Migrate v1 -> v2: giữ nguyên booking cũ, cập nhật schemaVersion
+    if (result.data.schemaVersion === 1 && BOOKING_SCHEMA_VERSION === 2) {
+      const migrated = result.data.bookings;
+      saveBookings(migrated);
+      return { bookings: migrated, wasReset: false };
+    }
+
+    if (result.data.schemaVersion !== BOOKING_SCHEMA_VERSION) {
+      // Version không khớp → reset
       localStorage.removeItem(BOOKING_STORAGE_KEY);
       return { bookings: [], wasReset: true };
     }

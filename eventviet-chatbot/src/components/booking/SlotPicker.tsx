@@ -69,16 +69,16 @@ export default function SlotPicker({
                 key={day}
                 type="button"
                 onClick={() => onDateChange(day)}
-                className={`flex-shrink-0 px-3.5 py-2.5 rounded-xl text-center transition-all duration-150 border cursor-pointer min-w-[72px] ${
+                className={`flex-shrink-0 px-3 py-2.5 rounded-xl text-center transition-all duration-150 border cursor-pointer min-w-[60px] sm:min-w-[72px] ${
                   isSelected
                     ? "bg-gradient-to-b from-amber-400 to-amber-500 border-amber-300 text-slate-950 shadow-md shadow-amber-500/20 font-bold scale-[1.02]"
                     : "bg-white/[0.04] border-white/10 text-slate-300 hover:bg-white/[0.08] hover:border-white/20"
                 }`}
               >
-                <div className={`text-[10px] ${isSelected ? "text-slate-900" : "text-slate-400"}`}>
+                <div className={`text-xs ${isSelected ? "text-slate-900" : "text-slate-400"}`}>
                   {dayName}
                 </div>
-                <div className="text-xs font-semibold mt-0.5">{dateNum}</div>
+                <div className="text-sm font-semibold mt-0.5">{dateNum}</div>
               </button>
             );
           })}
@@ -103,7 +103,7 @@ export default function SlotPicker({
               (Mỗi slot 30 phút)
             </span>
           </label>
-          <div className="grid grid-cols-4 sm:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
             {slots.map((slot) => {
               const full = isSlotFull(slot.time);
               const selected = selectedTime === slot.time;
@@ -113,7 +113,7 @@ export default function SlotPicker({
                   type="button"
                   disabled={full}
                   onClick={() => !full && onTimeChange(slot.time)}
-                  className={`py-2.5 px-2 rounded-xl text-xs font-medium transition-all duration-150 border text-center cursor-pointer min-h-[44px] flex flex-col items-center justify-center ${
+                  className={`py-3 px-2 rounded-xl text-sm font-medium transition-all duration-150 border text-center cursor-pointer min-h-[48px] flex flex-col items-center justify-center ${
                     full
                       ? "bg-rose-500/10 border-rose-500/20 text-rose-400/50 cursor-not-allowed opacity-60"
                       : selected
@@ -121,9 +121,9 @@ export default function SlotPicker({
                       : "bg-white/[0.04] border-white/10 text-slate-200 hover:bg-white/[0.08] hover:border-amber-500/30"
                   }`}
                 >
-                  <span>{slot.label}</span>
+                  <span className="text-sm font-semibold">{slot.label}</span>
                   {full && (
-                    <span className="text-[9px] text-rose-400 block font-normal">
+                    <span className="text-[10px] text-rose-400 block font-normal mt-0.5">
                       Hết chỗ
                     </span>
                   )}

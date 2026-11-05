@@ -13,10 +13,10 @@ export default function PricingComparisonCard({ onSelectTier }: PricingCompariso
         Dạ thưa Quý khách, với quy mô <strong>200 khách cho dạ tiệc Tri ân Khách hàng (Customer Appreciation Gala)</strong>, EventHHD phân bổ 3 phân khúc chuẩn mực để doanh nghiệp dễ dàng cân đối ngân sách:
       </p>
 
-      {/* 3 Tier Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      {/* 3 Tier Grid - Scroll ngang trên mobile (1 cột), 3 cột trên tablet/desktop */}
+      <div className="flex md:grid md:grid-cols-3 gap-3 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory scrollbar-hide">
         {/* Tier 1: Essential */}
-        <div className="p-3.5 rounded-lg bg-[#f2f4f6] border border-slate-200/80 shadow-sm flex flex-col justify-between hover:border-indigo-300 transition-all">
+        <div className="w-[85%] sm:w-[280px] md:w-auto shrink-0 snap-start p-3.5 rounded-lg bg-[#f2f4f6] border border-slate-200/80 shadow-sm flex flex-col justify-between hover:border-indigo-300 transition-all">
           <div>
             <div className="flex items-center justify-between mb-1">
               <span className="font-label-md text-xs text-[#464555] font-semibold">
@@ -50,7 +50,7 @@ export default function PricingComparisonCard({ onSelectTier }: PricingCompariso
         </div>
 
         {/* Tier 2: Signature VIP (Recommended) */}
-        <div className="p-3.5 rounded-lg bg-indigo-50/70 border-2 border-[#4f46e5] shadow-md flex flex-col justify-between relative overflow-hidden">
+        <div className="w-[85%] sm:w-[280px] md:w-auto shrink-0 snap-start p-3.5 rounded-lg bg-indigo-50/70 border-2 border-[#4f46e5] shadow-md flex flex-col justify-between relative overflow-hidden">
           <div className="absolute top-0 right-0 bg-[#4f46e5] text-white font-mono text-[9px] font-bold px-2 py-0.5 rounded-bl">
             KHUYÊN DÙNG
           </div>
@@ -84,7 +84,7 @@ export default function PricingComparisonCard({ onSelectTier }: PricingCompariso
         </div>
 
         {/* Tier 3: Prestige Bespoke */}
-        <div className="p-3.5 rounded-lg bg-amber-50/60 border border-amber-200 shadow-sm flex flex-col justify-between hover:border-amber-300 transition-all">
+        <div className="w-[85%] sm:w-[280px] md:w-auto shrink-0 snap-start p-3.5 rounded-lg bg-amber-50/60 border border-amber-200 shadow-sm flex flex-col justify-between hover:border-amber-300 transition-all">
           <div>
             <div className="flex items-center justify-between mb-1">
               <span className="font-label-md text-xs text-[#703a00] font-semibold">
@@ -116,6 +116,12 @@ export default function PricingComparisonCard({ onSelectTier }: PricingCompariso
             </li>
           </ul>
         </div>
+      </div>
+
+      {/* Swipe hint on mobile */}
+      <div className="md:hidden text-[11px] text-slate-500 text-center flex items-center justify-center gap-1.5 py-0.5">
+        <span className="material-symbols-outlined text-[14px] text-indigo-500">swipe</span>
+        <span>Vuốt ngang để xem 3 gói dịch vụ</span>
       </div>
 
       {/* Note & Discount banner */}

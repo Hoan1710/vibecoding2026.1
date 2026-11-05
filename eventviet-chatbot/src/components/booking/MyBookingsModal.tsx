@@ -54,9 +54,9 @@ export default function MyBookingsModal({ isOpen, onClose }: MyBookingsModalProp
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90dvh]">
         {/* Modal Header */}
-        <div className="px-5 py-4 bg-gradient-to-r from-indigo-50 to-slate-50 border-b border-slate-200 flex items-center justify-between">
+        <div className="px-4 sm:px-6 py-3.5 sm:py-4 bg-gradient-to-r from-indigo-50 to-slate-50 border-b border-slate-200 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-xs">
               <span className="material-symbols-outlined text-[20px]">calendar_month</span>
@@ -76,7 +76,7 @@ export default function MyBookingsModal({ isOpen, onClose }: MyBookingsModalProp
         </div>
 
         {/* Filter / Search by Phone */}
-        <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center gap-3">
+        <div className="p-3.5 sm:p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center gap-3">
           <div className="flex-1 min-w-[200px] relative">
             <span className="material-symbols-outlined absolute left-3 top-2 text-slate-400 text-[18px]">
               search
@@ -95,7 +95,7 @@ export default function MyBookingsModal({ isOpen, onClose }: MyBookingsModalProp
         </div>
 
         {/* Bookings List */}
-        <div className="p-4 sm:p-5 overflow-y-auto space-y-3 flex-1 min-h-[200px]">
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-3 flex-1 min-h-[160px]">
           {myBookings.length === 0 ? (
             <div className="text-center py-10 text-slate-500 space-y-2">
               <span className="material-symbols-outlined text-4xl text-slate-300">event_busy</span>
@@ -147,15 +147,15 @@ export default function MyBookingsModal({ isOpen, onClose }: MyBookingsModalProp
                   </div>
 
                   {/* Actions */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                    <div className="flex items-center gap-2">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-1">
+                    <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
                       <button
                         type="button"
                         onClick={() => generateIcsFile(b, "EventViet")}
-                        className="px-2.5 py-1 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors flex items-center gap-1 cursor-pointer border border-indigo-200"
+                        className="w-full sm:w-auto px-2.5 py-2 sm:py-1 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer border border-indigo-200"
                       >
                         <span className="material-symbols-outlined text-[15px]">download</span>
-                        <span>Tải Calendar (.ics)</span>
+                        <span>Tải Calendar</span>
                       </button>
                       <button
                         type="button"
@@ -165,7 +165,7 @@ export default function MyBookingsModal({ isOpen, onClose }: MyBookingsModalProp
                           const calUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${details}`;
                           window.open(calUrl, "_blank");
                         }}
-                        className="px-2.5 py-1 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                        className="w-full sm:w-auto px-2.5 py-2 sm:py-1 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer"
                       >
                         <span className="material-symbols-outlined text-[15px]">calendar_today</span>
                         <span>Google Cal</span>
@@ -175,7 +175,7 @@ export default function MyBookingsModal({ isOpen, onClose }: MyBookingsModalProp
                     <button
                       type="button"
                       onClick={() => handleCancelBooking(b.id)}
-                      className="px-2.5 py-1 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                      className="w-full sm:w-auto px-2.5 py-2 sm:py-1 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer border border-red-200 sm:border-transparent"
                     >
                       <span className="material-symbols-outlined text-[15px]">delete</span>
                       <span>Hủy hẹn</span>
@@ -188,12 +188,12 @@ export default function MyBookingsModal({ isOpen, onClose }: MyBookingsModalProp
         </div>
 
         {/* Modal Footer */}
-        <div className="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
-          <span>Hotline hỗ trợ khẩn cấp: <strong className="text-slate-800">1900 8899</strong></span>
+        <div className="p-3.5 sm:p-4 bg-slate-50 border-t border-slate-200 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 text-xs text-slate-500">
+          <span className="text-center sm:text-left">Hotline hỗ trợ khẩn cấp: <strong className="text-slate-800">1900 8899</strong></span>
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold rounded-lg transition-colors cursor-pointer"
+            className="w-full sm:w-auto px-4 py-2.5 sm:py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold rounded-lg transition-colors cursor-pointer text-center"
           >
             Đóng
           </button>
